@@ -73,104 +73,104 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
             <div className="card-body">
                 <h2 className="card-title">{initialData?.id ? 'Edit Tenant' : 'Add New Tenant'}</h2>
                 <form onSubmit={handleSubmit}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="form-control">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 justify-items-end">
+                        <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text">Name *</span>
+                                <span className="label-text text-right">Name *</span>
                             </label>
                             <input 
                                 name="name" 
                                 value={formData.name} 
                                 onChange={handleChange} 
-                                className="input input-bordered" 
+                                className="input input-bordered w-full" 
                                 required 
                             />
                         </div>
-                        <div className="form-control">
+                        <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text">Surname *</span>
+                                <span className="label-text text-right">Surname *</span>
                             </label>
                             <input 
                                 name="surname" 
                                 value={formData.surname} 
                                 onChange={handleChange} 
-                                className="input input-bordered" 
+                                className="input input-bordered w-full" 
                                 required 
                             />
                         </div>
-                        <div className="form-control">
+                        <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text">Address *</span>
+                                <span className="label-text text-right">Address *</span>
                             </label>
                             <input 
                                 name="address" 
                                 value={formData.address} 
                                 onChange={handleChange} 
-                                className="input input-bordered" 
+                                className="input input-bordered w-full" 
                                 required 
                             />
                         </div>
-                        <div className="form-control">
+                        <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text">EMŠO *</span>
+                                <span className="label-text text-right">EMŠO *</span>
                             </label>
                             <input 
                                 name="emso" 
                                 value={formData.emso} 
                                 onChange={handleChange} 
-                                className="input input-bordered" 
+                                className="input input-bordered w-full" 
                                 required 
                             />
                         </div>
-                        <div className="form-control">
+                        <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text">Tax Number</span>
+                                <span className="label-text text-right">Tax Number</span>
                             </label>
                             <input 
                                 name="tax_number" 
                                 value={formData.tax_number} 
                                 onChange={handleChange} 
-                                className="input input-bordered" 
+                                className="input input-bordered w-full" 
                             />
                         </div>
-                        <div className="form-control">
+                        <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text">Rent Amount (€) *</span>
+                                <span className="label-text text-right">Rent Amount (€) *</span>
                             </label>
                             <input 
                                 name="rent_amount" 
                                 type="number" 
-                                step="0.01" 
+                                step="any" 
                                 value={formData.rent_amount} 
                                 onChange={handleChange} 
-                                className="input input-bordered" 
+                                className="input input-bordered w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                 required 
                             />
                         </div>
-                        <div className="form-control">
+                        <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text">Lease Duration (months) *</span>
+                                <span className="label-text text-right">Lease Duration (months) *</span>
                             </label>
                             <input 
                                 name="lease_duration" 
                                 type="number" 
                                 value={formData.lease_duration} 
                                 onChange={handleChange} 
-                                className="input input-bordered" 
+                                className="input input-bordered w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                 required 
                             />
                         </div>
-                        <div className="form-control">
+                        <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text">Room Area (m²) *</span>
+                                <span className="label-text text-right">Room Area (m²) *</span>
                             </label>
                             <input 
                                 name="room_area" 
                                 type="number" 
-                                step="0.01" 
+                                step="any" 
                                 value={formData.room_area} 
                                 onChange={handleChange} 
-                                className="input input-bordered" 
+                                className="input input-bordered w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                 required 
                             />
                         </div>
