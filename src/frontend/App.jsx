@@ -364,7 +364,7 @@ export default function App() {
                 </>
             )}
             
-            {activeTab === 'reports' && <ReportGenerator selectedProperty={selectedProperty} />}
+            {activeTab === 'reports' && <ReportGenerator selectedProperty={selectedProperty} tenants={tenants} />}
             
             {activeTab === 'properties' && (
                 <PropertyManager 
