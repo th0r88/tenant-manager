@@ -46,7 +46,7 @@ export default function Dashboard() {
         }
     };
 
-    const formatCurrency = (amount) => `€${(amount || 0).toFixed(2)}`;
+    const formatCurrency = (amount) => `${(amount || 0).toFixed(2)}€`;
     const formatDate = (timestamp) => new Date(timestamp).toLocaleDateString();
 
     if (loading) {
@@ -104,7 +104,7 @@ export default function Dashboard() {
                 <div className="stat">
                     <div className="stat-figure text-accent">
                         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
                     </div>
                     <div className="stat-title">Monthly Rent</div>
@@ -124,73 +124,76 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* Properties Breakdown */}
-            <div className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                    <h2 className="card-title text-2xl mb-4">Properties Breakdown</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {propertiesBreakdown.map(property => (
-                            <div key={property.id} className="card bg-base-200 shadow">
-                                <div className="card-body">
-                                    <h3 className="card-title text-lg">{property.name}</h3>
-                                    <p className="text-sm opacity-70 mb-3">{property.address}</p>
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between">
-                                            <span className="font-medium">Type:</span>
-                                            <span>{property.property_type}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="font-medium">Tenants:</span>
-                                            <span className="badge badge-primary">{property.tenant_count}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="font-medium">Monthly Rent:</span>
-                                            <span className="font-bold text-success">{formatCurrency(property.total_rent)}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="font-medium">Total Area:</span>
-                                            <span>{property.total_area} m²</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                    <h2 className="card-title text-2xl mb-4">Recent Activity</h2>
-                    {recentActivity.length === 0 ? (
-                        <div className="text-center py-8 opacity-50">
-                            <p>No recent activity</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {recentActivity.map((activity, index) => (
-                                <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-base-200">
-                                    <div className="avatar">
-                                        <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center">
-                                            <div className="text-3xl flex items-center justify-center w-full h-full">
-                                                {activity.type === 'tenant' ? '👤' : '⚡'}
+            {/* Properties Breakdown and Recent Activity - Side by Side */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Properties Breakdown */}
+                <div className="card bg-base-100 shadow-xl">
+                    <div className="card-body">
+                        <h2 className="card-title text-xl mb-4">Properties Breakdown</h2>
+                        <div className="grid grid-cols-1 gap-3">
+                            {propertiesBreakdown.map(property => (
+                                <div key={property.id} className="card bg-base-200 shadow">
+                                    <div className="card-body p-4">
+                                        <h3 className="card-title text-base">{property.name}</h3>
+                                        <p className="text-xs opacity-70 mb-2">{property.address}</p>
+                                        <div className="space-y-1 text-sm">
+                                            <div className="flex justify-between">
+                                                <span className="font-medium">Type:</span>
+                                                <span>{property.property_type}</span>
                                             </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="font-medium">
-                                            {activity.type === 'tenant' ? 'New tenant: ' : 'Utility entry: '}
-                                            <span className="font-bold">{activity.description}</span>
-                                        </div>
-                                        <div className="text-sm opacity-70">
-                                            {activity.property_name} • {formatDate(activity.timestamp)}
+                                            <div className="flex justify-between">
+                                                <span className="font-medium">Tenants:</span>
+                                                <span className="badge badge-primary badge-sm">{property.tenant_count}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="font-medium">Monthly Rent:</span>
+                                                <span className="font-bold text-success">{formatCurrency(property.total_rent)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="font-medium">Total Area:</span>
+                                                <span>{property.total_area} m²</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                    )}
+                    </div>
+                </div>
+
+                {/* Recent Activity */}
+                <div className="card bg-base-100 shadow-xl">
+                    <div className="card-body">
+                        <h2 className="card-title text-xl mb-4">Recent Activity</h2>
+                        {recentActivity.length === 0 ? (
+                            <div className="text-center py-8 opacity-50">
+                                <p>No recent activity</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {recentActivity.map((activity, index) => (
+                                    <div key={index} className="flex items-center gap-3 p-2 rounded-lg bg-base-200">
+                                        <div className="avatar">
+                                            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+                                                <div className="text-2xl flex items-center justify-center w-full h-full">
+                                                    {activity.type === 'tenant' ? '👤' : '⚡'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="font-medium text-sm">
+                                                {activity.type === 'tenant' ? 'New tenant: ' : 'Utility entry: '}
+                                                <span className="font-bold">{activity.description}</span>
+                                            </div>
+                                            <div className="text-xs opacity-70">
+                                                {activity.property_name} • {formatDate(activity.timestamp)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 

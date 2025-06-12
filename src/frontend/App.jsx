@@ -210,7 +210,7 @@ export default function App() {
                             className={`tab ${activeTab === 'tenants' ? 'tab-active' : ''} ${!selectedProperty ? 'tab-disabled' : ''}`}
                             onClick={() => selectedProperty && setActiveTab('tenants')}
                         >
-                            Tenants ({tenants.length})
+                            Tenants
                         </a>
                     </div>
                     <div className="tooltip" data-tip={!selectedProperty ? "Select a property first" : "Manage utility costs"}>
@@ -218,7 +218,7 @@ export default function App() {
                             className={`tab ${activeTab === 'utilities' ? 'tab-active' : ''} ${!selectedProperty ? 'tab-disabled' : ''}`}
                             onClick={() => selectedProperty && setActiveTab('utilities')}
                         >
-                            Utilities ({utilities.length})
+                            Utilities
                         </a>
                     </div>
                     <div className="tooltip" data-tip={!selectedProperty ? "Select a property first" : "Generate monthly reports"}>
@@ -227,14 +227,6 @@ export default function App() {
                             onClick={() => selectedProperty && setActiveTab('reports')}
                         >
                             Reports
-                        </a>
-                    </div>
-                    <div className="tooltip" data-tip="Manage your properties">
-                        <a 
-                            className={`tab ${activeTab === 'properties' ? 'tab-active' : ''}`}
-                            onClick={() => setActiveTab('properties')}
-                        >
-                            Properties ({properties.length})
                         </a>
                     </div>
                 </div>
