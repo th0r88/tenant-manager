@@ -61,3 +61,8 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+
+# Claude generated folder/files
+
+.claude/
+CLAUDE.md 
