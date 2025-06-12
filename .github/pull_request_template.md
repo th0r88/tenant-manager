@@ -17,12 +17,16 @@ Brief description of what this PR does
 - [ ] Any dependent changes have been merged and published
 
 ## Testing
-- [ ] Unit tests pass
-- [ ] Integration tests pass
-- [ ] Manual testing completed
+- [ ] Build passes (`npm run build`)
+- [ ] Frontend loads without errors
+- [ ] Backend starts successfully
+- [ ] Manual testing completed for affected features
 
 ## Screenshots (if applicable)
 Add screenshots to help explain your changes
+
+## Breaking Changes
+List any breaking changes and migration steps required
 
 ## Additional Notes
 Any additional information that reviewers should know

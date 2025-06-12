@@ -35,3 +35,8 @@ jobs:
           echo "Build failed - no dist directory found"
           exit 1
         fi
+    
+    - name: Check build size
+      run: |
+        echo "Build size:"
+        du -sh dist/
