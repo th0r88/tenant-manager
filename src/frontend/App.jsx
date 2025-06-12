@@ -18,6 +18,11 @@ export default function App() {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [utilityFilter, setUtilityFilter] = useState({
+        month: (new Date().getMonth() + 1).toString(),
+        year: new Date().getFullYear().toString(),
+        utility_type: ''
+    });
 
     useEffect(() => {
         console.log('Environment variables:', {
@@ -245,15 +250,94 @@ export default function App() {
                     <UtilityForm onSubmit={handleUtilitySubmit} initialData={editingUtility} onCancel={() => setEditingUtility(null)} selectedProperty={selectedProperty} />
                     <div>
                         <h2 className="text-2xl font-bold mb-4">Utility Entries</h2>
+                        
+                        {/* Filter Controls */}
+                        <div className="card bg-base-100 shadow-md mb-4">
+                            <div className="card-body p-4">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <div className="form-control w-full">
+                                        <select 
+                                            value={utilityFilter.month} 
+                                            onChange={(e) => setUtilityFilter({...utilityFilter, month: e.target.value})}
+                                            className="select select-bordered w-full"
+                                        >
+                                            <option value="">All Months</option>
+                                            {[...Array(12)].map((_, i) => (
+                                                <option key={i + 1} value={i + 1}>
+                                                    {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="form-control w-full">
+                                        <select 
+                                            value={utilityFilter.utility_type} 
+                                            onChange={(e) => setUtilityFilter({...utilityFilter, utility_type: e.target.value})}
+                                            className="select select-bordered w-full"
+                                        >
+                                            <option value="">All Utility Types</option>
+                                            <option value="Elektrika">Elektrika</option>
+                                            <option value="Voda">Voda</option>
+                                            <option value="Ogrevanje">Ogrevanje</option>
+                                            <option value="Internet">Internet</option>
+                                            <option value="TV + RTV prispevek">TV + RTV prispevek</option>
+                                            <option value="Snaga">Snaga</option>
+                                            <option value="Ostalo">Ostalo</option>
+                                        </select>
+                                    </div>
+                                    <div className="form-control w-full">
+                                        <select 
+                                            value={utilityFilter.year} 
+                                            onChange={(e) => setUtilityFilter({...utilityFilter, year: e.target.value})}
+                                            className="select select-bordered w-full"
+                                        >
+                                            <option value="">All Years</option>
+                                            {Array.from({ length: 26 }, (_, i) => 2025 + i)
+                                                .sort((a, b) => b - a)
+                                                .map(year => (
+                                                    <option key={year} value={year}>{year}</option>
+                                                ))
+                                            }
+                                        </select>
+                                    </div>
+                                    <div className="form-control w-full">
+                                        <button 
+                                            className="btn btn-outline"
+                                            onClick={() => setUtilityFilter({month: '', year: '', utility_type: ''})}
+                                        >
+                                            Clear Filters
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         {utilities.length === 0 ? (
                             <div className="card bg-base-100 shadow-xl">
                                 <div className="card-body">
                                     <p>No utility entries yet. Add your first utility cost above.</p>
                                 </div>
                             </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {utilities.map((utility) => (
+                        ) : (() => {
+                            const filteredUtilities = utilities.filter(utility => {
+                                const monthMatch = !utilityFilter.month || utility.month == utilityFilter.month;
+                                const yearMatch = !utilityFilter.year || utility.year == utilityFilter.year;
+                                const typeMatch = !utilityFilter.utility_type || utility.utility_type === utilityFilter.utility_type;
+                                return monthMatch && yearMatch && typeMatch;
+                            });
+
+                            return filteredUtilities.length === 0 ? (
+                                <div className="card bg-base-100 shadow-xl">
+                                    <div className="card-body">
+                                        <p>No utility entries found for the selected period.</p>
+                                        <p className="text-sm opacity-70 mt-2">
+                                            Try adjusting your month/year filters or clear all filters to see all entries.
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {filteredUtilities.map((utility) => (
                                     <div key={utility.id} className="card bg-base-100 shadow-xl">
                                         <div className="card-body">
                                             <h3 className="card-title">{utility.utility_type}</h3>
@@ -272,9 +356,10 @@ export default function App() {
                                             </div>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        )}
+                                    ))}
+                                </div>
+                            );
+                        })()}
                     </div>
                 </>
             )}

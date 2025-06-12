@@ -51,7 +51,7 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                 <h2 className="card-title">{initialData?.id ? 'Edit Utility Cost' : 'Add Utility Cost'}</h2>
                 <form onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="form-control">
+                        <div className="form-control w-full">
                             <label className="label">
                                 <span className="label-text">Month *</span>
                             </label>
@@ -59,7 +59,7 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                                 name="month" 
                                 value={formData.month} 
                                 onChange={handleChange} 
-                                className="select select-bordered" 
+                                className="select select-bordered w-full" 
                                 required
                             >
                                 {[...Array(12)].map((_, i) => (
@@ -69,20 +69,23 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                                 ))}
                             </select>
                         </div>
-                        <div className="form-control">
+                        <div className="form-control w-full">
                             <label className="label">
                                 <span className="label-text">Year *</span>
                             </label>
-                            <input 
+                            <select 
                                 name="year" 
-                                type="number" 
                                 value={formData.year} 
                                 onChange={handleChange} 
-                                className="input input-bordered" 
-                                required 
-                            />
+                                className="select select-bordered w-full" 
+                                required
+                            >
+                                {Array.from({ length: 26 }, (_, i) => 2025 + i).map(year => (
+                                    <option key={year} value={year}>{year}</option>
+                                ))}
+                            </select>
                         </div>
-                        <div className="form-control">
+                        <div className="form-control w-full">
                             <label className="label">
                                 <span className="label-text">Utility Type *</span>
                             </label>
@@ -90,7 +93,7 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                                 name="utility_type" 
                                 value={formData.utility_type} 
                                 onChange={handleChange} 
-                                className="select select-bordered" 
+                                className="select select-bordered w-full" 
                                 required
                             >
                                 <option value="">Select utility type</option>
@@ -103,21 +106,21 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                                 <option value="Ostalo">Ostalo</option>
                             </select>
                         </div>
-                        <div className="form-control">
+                        <div className="form-control w-full">
                             <label className="label">
                                 <span className="label-text">Total Amount (€) *</span>
                             </label>
                             <input 
                                 name="total_amount" 
                                 type="number" 
-                                step="0.01" 
+                                step="any" 
                                 value={formData.total_amount} 
                                 onChange={handleChange} 
-                                className="input input-bordered" 
+                                className="input input-bordered w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                 required 
                             />
                         </div>
-                        <div className="form-control md:col-span-2">
+                        <div className="form-control w-full">
                             <label className="label">
                                 <span className="label-text">Allocation Method *</span>
                             </label>
@@ -125,7 +128,7 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                                 name="allocation_method" 
                                 value={formData.allocation_method} 
                                 onChange={handleChange} 
-                                className="select select-bordered" 
+                                className="select select-bordered w-full" 
                                 required
                             >
                                 <option value="per_person">Per Person</option>
