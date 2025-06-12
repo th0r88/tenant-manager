@@ -6,7 +6,11 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "node src/backend/server.js",
     "client": "vite src/frontend --port 3000",
-    "build": "vite build src/frontend"
+    "build": "vite build src/frontend",
+    "preview": "vite preview src/frontend",
+    "clean": "rm -rf dist node_modules package-lock.json",
+    "reset": "npm run clean && npm install",
+    "check": "npm run build && npm run server & sleep 3 && curl -f http://localhost:3001/api/health && pkill -f 'node.*server.js'"
   },
   "dependencies": {
     "cors": "^2.8.5",
