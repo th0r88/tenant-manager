@@ -1,3 +1,24 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Address truncation utilities */
+.address-truncate {
+  @apply truncate;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Enhanced tooltip positioning for addresses */
+.tooltip[data-tip]:before {
+  max-width: 20rem;
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+/* Table column constraints */
+.table-fixed {
+  table-layout: fixed;
+  width: 100%;
+}
