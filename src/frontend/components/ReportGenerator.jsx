@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { reportApi } from '../services/api';
+import DownloadButton from './DownloadButton';
+import BatchExportModal from './BatchExportModal';
 
 export default function ReportGenerator({ selectedProperty, tenants }) {
     const [month, setMonth] = useState(new Date().getMonth() + 1);
@@ -11,6 +13,9 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
         year: new Date().getFullYear(),
         tenant: ''
     });
+    const [downloadingPdfs, setDownloadingPdfs] = useState(new Set());
+    const [showBatchModal, setShowBatchModal] = useState(false);
+    const [selectedTenants, setSelectedTenants] = useState(new Set());
 
     useEffect(() => {
         if (selectedProperty) {
@@ -31,8 +36,39 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
         }
     };
 
-    const handleDownloadPdf = (tenantId) => {
-        reportApi.downloadPdf(tenantId, month, year);
+    const handleDownloadPdf = async (tenantId) => {
+        setDownloadingPdfs(prev => new Set(prev).add(tenantId));
+        try {
+            await reportApi.downloadPdf(tenantId, month, year);
+        } catch (error) {
+            console.error('PDF download failed:', error);
+        } finally {
+            setDownloadingPdfs(prev => {
+                const next = new Set(prev);
+                next.delete(tenantId);
+                return next;
+            });
+        }
+    };
+
+    const handleTenantSelection = (tenantId, selected) => {
+        setSelectedTenants(prev => {
+            const next = new Set(prev);
+            if (selected) {
+                next.add(tenantId);
+            } else {
+                next.delete(tenantId);
+            }
+            return next;
+        });
+    };
+
+    const handleSelectAll = (filteredSummary) => {
+        if (selectedTenants.size === filteredSummary.length) {
+            setSelectedTenants(new Set());
+        } else {
+            setSelectedTenants(new Set(filteredSummary.map(t => t.id)));
+        }
     };
 
     return (
@@ -162,51 +198,105 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                 <p className="text-sm mt-2">Try adjusting your filters or clear all filters to see all reports.</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="table table-zebra">
-                                    <thead>
-                                        <tr>
-                                            <th>Tenant</th>
-                                            <th>Rent</th>
-                                            <th>Utilities</th>
-                                            <th>Total Due</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredSummary.map((tenant) => (
-                                        <tr key={tenant.id}>
-                                            <td>
-                                                <div className="font-bold">{tenant.name} {tenant.surname}</div>
-                                            </td>
-                                            <td>
-                                                <div className="font-medium">€{tenant.rent_amount.toFixed(2)}</div>
-                                            </td>
-                                            <td>
-                                                <div className="font-medium">€{tenant.utilities_total.toFixed(2)}</div>
-                                            </td>
-                                            <td>
-                                                <div className="font-bold text-primary">€{tenant.total_due.toFixed(2)}</div>
-                                            </td>
-                                            <td>
-                                                <div className="tooltip" data-tip="Download detailed PDF report">
-                                                    <button 
-                                                        className="btn btn-sm btn-primary" 
-                                                        onClick={() => handleDownloadPdf(tenant.id)}
-                                                    >
-                                                        Download PDF
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                            <div>
+                                {/* Batch Actions Bar */}
+                                <div className="bg-base-200 p-4 rounded-lg mb-4 flex flex-wrap gap-4 items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <label className="label cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                className="checkbox checkbox-primary" 
+                                                checked={selectedTenants.size === filteredSummary.length && filteredSummary.length > 0}
+                                                onChange={() => handleSelectAll(filteredSummary)}
+                                            />
+                                            <span className="label-text ml-2">
+                                                Select All ({selectedTenants.size} selected)
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {selectedTenants.size > 0 && (
+                                            <button 
+                                                className="btn btn-primary btn-sm"
+                                                onClick={() => setShowBatchModal(true)}
+                                            >
+                                                📦 Export {selectedTenants.size} Reports as ZIP
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                    <table className="table table-zebra">
+                                        <thead>
+                                            <tr>
+                                                <th>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="checkbox checkbox-primary checkbox-sm" 
+                                                        checked={selectedTenants.size === filteredSummary.length && filteredSummary.length > 0}
+                                                        onChange={() => handleSelectAll(filteredSummary)}
+                                                    />
+                                                </th>
+                                                <th>Tenant</th>
+                                                <th>Rent</th>
+                                                <th>Utilities</th>
+                                                <th>Total Due</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredSummary.map((tenant) => (
+                                            <tr key={tenant.id}>
+                                                <td>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="checkbox checkbox-primary checkbox-sm" 
+                                                        checked={selectedTenants.has(tenant.id)}
+                                                        onChange={(e) => handleTenantSelection(tenant.id, e.target.checked)}
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <div className="font-bold">{tenant.name} {tenant.surname}</div>
+                                                </td>
+                                                <td>
+                                                    <div className="font-medium">€{tenant.rent_amount.toFixed(2)}</div>
+                                                </td>
+                                                <td>
+                                                    <div className="font-medium">€{tenant.utilities_total.toFixed(2)}</div>
+                                                </td>
+                                                <td>
+                                                    <div className="font-bold text-primary">€{tenant.total_due.toFixed(2)}</div>
+                                                </td>
+                                                <td>
+                                                    <DownloadButton 
+                                                        onDownload={() => handleDownloadPdf(tenant.id)}
+                                                        isLoading={downloadingPdfs.has(tenant.id)}
+                                                        tenantName={`${tenant.name} ${tenant.surname}`}
+                                                    />
+                                                </td>
+                                            </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         );
                     })()}
                 </div>
             </div>
+
+            {/* Batch Export Modal */}
+            {showBatchModal && (
+                <BatchExportModal 
+                    isOpen={showBatchModal}
+                    onClose={() => setShowBatchModal(false)}
+                    selectedTenants={Array.from(selectedTenants)}
+                    tenants={summary.filter(t => selectedTenants.has(t.id))}
+                    month={month}
+                    year={year}
+                />
+            )}
         </div>
     );
 }

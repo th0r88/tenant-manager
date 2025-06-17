@@ -5,6 +5,8 @@ import UtilityForm from './components/UtilityForm';
 import ReportGenerator from './components/ReportGenerator';
 import PropertyManager from './components/PropertyManager';
 import Dashboard from './components/Dashboard';
+import ErrorBoundary, { ReportGeneratorErrorFallback, NetworkErrorFallback } from './components/ErrorBoundary';
+import { ErrorDisplay, useApiErrorHandler } from './hooks/useErrorHandler.jsx';
 import { tenantApi, utilityApi, propertyApi } from './services/api';
 import './styles.css';
 
@@ -18,6 +20,7 @@ export default function App() {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const { error: apiError, isLoading: globalLoading, handleApiCall, clearError } = useApiErrorHandler();
     const [utilityFilter, setUtilityFilter] = useState({
         month: (new Date().getMonth() + 1).toString(),
         year: new Date().getFullYear().toString(),
@@ -184,6 +187,14 @@ export default function App() {
             </div>
 
             <div className="container mx-auto px-4 py-6">
+                {/* Global API Error Display */}
+                <ErrorDisplay 
+                    error={apiError} 
+                    onRetry={() => window.location.reload()} 
+                    onDismiss={clearError}
+                    className="mb-4"
+                />
+                
                 {error && (
                     <div className="alert alert-error mb-4">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -372,15 +383,21 @@ export default function App() {
                 </>
             )}
             
-            {activeTab === 'reports' && <ReportGenerator selectedProperty={selectedProperty} tenants={tenants} />}
+            {activeTab === 'reports' && (
+                <ErrorBoundary fallback={ReportGeneratorErrorFallback}>
+                    <ReportGenerator selectedProperty={selectedProperty} tenants={tenants} />
+                </ErrorBoundary>
+            )}
             
             {activeTab === 'properties' && (
-                <PropertyManager 
-                    properties={properties}
-                    onPropertyChange={loadProperties}
-                    onError={setError}
-                    onSuccess={setSuccess}
-                />
+                <ErrorBoundary>
+                    <PropertyManager 
+                        properties={properties}
+                        onPropertyChange={loadProperties}
+                        onError={setError}
+                        onSuccess={setSuccess}
+                    />
+                </ErrorBoundary>
             )}
             </div>
         </div>
