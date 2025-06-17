@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS properties (
     name TEXT NOT NULL,
     address TEXT NOT NULL,
     property_type TEXT NOT NULL,
+    house_area REAL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
