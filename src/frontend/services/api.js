@@ -63,12 +63,99 @@ export const utilityApi = {
 
 export const reportApi = {
     getSummary: (month, year, propertyId = 1) => fetch(`${API_BASE}/reports/summary/${month}/${year}?property_id=${propertyId}`).then(r => r.json()),
-    downloadPdf: (tenantId, month, year) => {
-        const url = `${API_BASE}/reports/${tenantId}/${month}/${year}`;
+    
+    downloadPdf: async (tenantId, month, year) => {
+        const response = await fetch(`${API_BASE}/reports/${tenantId}/${month}/${year}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         link.download = `tenant-report-${month}-${year}.pdf`;
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    },
+
+    batchExport: async (tenantIds, month, year, progressCallback) => {
+        try {
+            const response = await fetch(`${API_BASE}/reports/batch-export`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tenantIds,
+                    month,
+                    year
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            // Check if it's a streaming response
+            const contentType = response.headers.get('content-type');
+            
+            if (contentType && contentType.includes('application/json')) {
+                // Streaming progress updates
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        if (line.trim()) {
+                            try {
+                                const data = JSON.parse(line);
+                                if (data.type === 'progress' && progressCallback) {
+                                    progressCallback(data.progress);
+                                } else if (data.type === 'complete') {
+                                    return {
+                                        success: true,
+                                        downloadUrl: data.downloadUrl,
+                                        filename: data.filename
+                                    };
+                                } else if (data.type === 'error') {
+                                    return {
+                                        success: false,
+                                        errors: [data.message]
+                                    };
+                                }
+                            } catch (e) {
+                                console.warn('Failed to parse streaming response:', line);
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Direct blob download
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const filename = `batch-reports-${month}-${year}.zip`;
+                
+                return {
+                    success: true,
+                    downloadUrl: url,
+                    filename
+                };
+            }
+        } catch (error) {
+            return {
+                success: false,
+                errors: [error.message || 'Batch export failed']
+            };
+        }
     }
 };
 
