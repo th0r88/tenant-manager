@@ -24,7 +24,7 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                     <th>Tax Number</th>
                                     <th className="w-20">Rent</th>
                                     <th className="w-16">Area</th>
-                                    <th className="w-16">Lease</th>
+                                    <th className="w-20">Occupancy</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -47,7 +47,21 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                             <div className="font-bold text-success text-sm">€{tenant.rent_amount}/mo</div>
                                         </td>
                                         <td className="w-16 text-center">{tenant.room_area}m²</td>
-                                        <td className="w-16 text-center">{tenant.lease_duration}mo</td>
+                                        <td className="w-20">
+                                            <div className="text-center">
+                                                <div className={`badge badge-sm ${
+                                                    tenant.occupancy_status === 'active' ? 'badge-success' :
+                                                    tenant.occupancy_status === 'pending' ? 'badge-warning' : 'badge-error'
+                                                }`}>
+                                                    {tenant.occupancy_status === 'active' ? 'Active' :
+                                                     tenant.occupancy_status === 'pending' ? 'Pending' : 'Moved Out'}
+                                                </div>
+                                                <div className="text-xs mt-1 opacity-70">
+                                                    {tenant.move_in_date ? new Date(tenant.move_in_date).toLocaleDateString() : 'N/A'}
+                                                    {tenant.move_out_date && ` - ${new Date(tenant.move_out_date).toLocaleDateString()}`}
+                                                </div>
+                                            </div>
+                                        </td>
                                         <td>
                                             <div className="flex gap-2">
                                                 <div className="tooltip" data-tip="Edit tenant details">
@@ -109,6 +123,25 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                             <div>
                                                 <span className="font-medium opacity-70">Lease:</span>
                                                 <div>{tenant.lease_duration} months</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="mt-3">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="font-medium opacity-70">Status:</span>
+                                                <div className={`badge badge-sm ${
+                                                    tenant.occupancy_status === 'active' ? 'badge-success' :
+                                                    tenant.occupancy_status === 'pending' ? 'badge-warning' : 'badge-error'
+                                                }`}>
+                                                    {tenant.occupancy_status === 'active' ? 'Active' :
+                                                     tenant.occupancy_status === 'pending' ? 'Pending' : 'Moved Out'}
+                                                </div>
+                                            </div>
+                                            <div className="text-xs opacity-70">
+                                                <div><span className="font-medium">Move-in:</span> {tenant.move_in_date ? new Date(tenant.move_in_date).toLocaleDateString() : 'N/A'}</div>
+                                                {tenant.move_out_date && (
+                                                    <div><span className="font-medium">Move-out:</span> {new Date(tenant.move_out_date).toLocaleDateString()}</div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

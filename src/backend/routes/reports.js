@@ -52,9 +52,11 @@ router.get('/:tenantId/:month/:year', (req, res) => {
                 try {
                     const pdfBuffer = await generateTenantReport(tenant, month, year, utilities);
                     
+                    const safeName = tenant.name.replace(/[^a-zA-Z0-9]/g, '');
+                    const safeSurname = tenant.surname.replace(/[^a-zA-Z0-9]/g, '');
                     res.set({
                         'Content-Type': 'application/pdf',
-                        'Content-Disposition': `attachment; filename="tenant-${tenant.name}-${tenant.surname}-${month}-${year}.pdf"`
+                        'Content-Disposition': `attachment; filename="tenant-${safeName}-${safeSurname}-${month}-${year}.pdf"`
                     });
                     
                     res.send(pdfBuffer);

@@ -22,7 +22,7 @@ A modern multi-property tenant management application for property managers in S
 
 ### Prerequisites
 
-- Node.js 16+ and npm
+- Node.js 18+ and npm
 
 ### Installation
 

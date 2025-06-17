@@ -6,6 +6,8 @@ import utilitiesRouter from './routes/utilities.js';
 import reportsRouter from './routes/reports.js';
 import propertiesRouter from './routes/properties.js';
 import dashboardRouter from './routes/dashboard.js';
+import billingPeriodsRouter from './routes/billingPeriods.js';
+import occupancyTrackingRouter from './routes/occupancyTracking.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,6 +24,8 @@ app.use('/api/tenants', tenantsRouter);
 app.use('/api/utilities', utilitiesRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/billing-periods', billingPeriodsRouter);
+app.use('/api/occupancy-tracking', occupancyTrackingRouter);
 
 async function startServer() {
     try {
