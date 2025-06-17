@@ -7,6 +7,7 @@ export default function Dashboard() {
     const [recentActivity, setRecentActivity] = useState([]);
     const [revenueTrends, setRevenueTrends] = useState([]);
     const [utilityBreakdown, setUtilityBreakdown] = useState([]);
+    const [capacityMetrics, setCapacityMetrics] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -24,13 +25,15 @@ export default function Dashboard() {
                 propertiesData,
                 activityData,
                 revenueData,
-                utilityData
+                utilityData,
+                capacityData
             ] = await Promise.all([
                 dashboardApi.getOverview(),
                 dashboardApi.getPropertiesBreakdown(),
                 dashboardApi.getRecentActivity(8),
                 dashboardApi.getRevenueTrends(6),
-                dashboardApi.getUtilityBreakdown(3)
+                dashboardApi.getUtilityBreakdown(3),
+                dashboardApi.getCapacityMetrics()
             ]);
 
             setOverview(overviewData);
@@ -38,6 +41,7 @@ export default function Dashboard() {
             setRecentActivity(activityData);
             setRevenueTrends(revenueData);
             setUtilityBreakdown(utilityData);
+            setCapacityMetrics(capacityData);
         } catch (err) {
             console.error('Error loading dashboard:', err);
             setError('Failed to load dashboard data: ' + err.message);
@@ -118,14 +122,14 @@ export default function Dashboard() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                         </svg>
                     </div>
-                    <div className="stat-title">Occupancy</div>
-                    <div className="stat-value text-success">{((overview.avgOccupancy || 0) * 100).toFixed(1)}%</div>
-                    <div className="stat-desc">Average occupancy rate</div>
+                    <div className="stat-title">Effective Occupancy</div>
+                    <div className="stat-value text-success">{((overview.effectiveOccupancy || overview.avgOccupancy || 0) * 100).toFixed(1)}%</div>
+                    <div className="stat-desc">Weighted by occupancy days</div>
                 </div>
             </div>
 
-            {/* Properties Breakdown and Recent Activity - Side by Side */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Properties Breakdown, Capacity Overview, and Recent Activity */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Properties Breakdown */}
                 <div className="card bg-base-100 shadow-xl">
                     <div className="card-body">
@@ -160,6 +164,29 @@ export default function Dashboard() {
                         </div>
                     </div>
                 </div>
+
+                {/* Capacity Overview */}
+                {capacityMetrics && (
+                    <div className="card bg-base-100 shadow-xl">
+                        <div className="card-body">
+                            <h2 className="card-title text-xl mb-4">Capacity Overview</h2>
+                            <div className="space-y-3">
+                                <div className="stat">
+                                    <div className="stat-title text-sm">Total Capacity</div>
+                                    <div className="stat-value text-2xl text-primary">{capacityMetrics.totalCapacity || 'Unlimited'}</div>
+                                </div>
+                                <div className="stat">
+                                    <div className="stat-title text-sm">Current Occupancy</div>
+                                    <div className="stat-value text-2xl text-secondary">{capacityMetrics.totalOccupied || 0}</div>
+                                </div>
+                                <div className="stat">
+                                    <div className="stat-title text-sm">Available Spaces</div>
+                                    <div className="stat-value text-2xl text-success">{capacityMetrics.availableSpaces || 'Unlimited'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Recent Activity */}
                 <div className="card bg-base-100 shadow-xl">

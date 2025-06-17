@@ -6,15 +6,20 @@ export default function PropertyManager({ properties, onPropertyChange, onError,
         name: '',
         address: '',
         property_type: '',
-        house_area: ''
+        house_area: '',
+        number_of_tenants: ''
     });
     const [editing, setEditing] = useState(null);
     const [deleteModal, setDeleteModal] = useState(null);
 
     const handleChange = (e) => {
-        const value = e.target.name === 'house_area' 
-            ? (e.target.value === '' ? '' : parseFloat(e.target.value) || '')
-            : e.target.value;
+        let value = e.target.value;
+        
+        if (e.target.name === 'house_area') {
+            value = e.target.value === '' ? '' : parseFloat(e.target.value) || '';
+        } else if (e.target.name === 'number_of_tenants') {
+            value = e.target.value === '' ? '' : parseInt(e.target.value) || '';
+        }
         
         setFormData({
             ...formData,
@@ -32,7 +37,7 @@ export default function PropertyManager({ properties, onPropertyChange, onError,
                 await propertyApi.create(formData);
                 onSuccess('Property created successfully');
             }
-            setFormData({ name: '', address: '', property_type: '', house_area: '' });
+            setFormData({ name: '', address: '', property_type: '', house_area: '', number_of_tenants: '' });
             setEditing(null);
             onPropertyChange();
         } catch (err) {
@@ -45,7 +50,8 @@ export default function PropertyManager({ properties, onPropertyChange, onError,
             name: property.name,
             address: property.address,
             property_type: property.property_type,
-            house_area: property.house_area || ''
+            house_area: property.house_area || '',
+            number_of_tenants: property.number_of_tenants || ''
         });
         setEditing(property);
     };
@@ -63,7 +69,7 @@ export default function PropertyManager({ properties, onPropertyChange, onError,
     };
 
     const handleCancel = () => {
-        setFormData({ name: '', address: '', property_type: '', house_area: '' });
+        setFormData({ name: '', address: '', property_type: '', house_area: '', number_of_tenants: '' });
         setEditing(null);
     };
 
@@ -119,6 +125,21 @@ export default function PropertyManager({ properties, onPropertyChange, onError,
                             </div>
                             <div className="form-control">
                                 <label className="label">
+                                    <span className="label-text">Number of tenants</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    name="number_of_tenants"
+                                    value={formData.number_of_tenants}
+                                    onChange={handleChange}
+                                    placeholder="e.g., 3"
+                                    className="input input-bordered w-full"
+                                    min="0"
+                                    step="1"
+                                />
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
                                     <span className="label-text">Property Type *</span>
                                 </label>
                                 <select 
@@ -167,7 +188,45 @@ export default function PropertyManager({ properties, onPropertyChange, onError,
                                         <p><span className="font-semibold">Address:</span> {property.address}</p>
                                         <p><span className="font-semibold">Type:</span> {property.property_type}</p>
                                         <p><span className="font-semibold">House Area:</span> {property.house_area ? `${property.house_area} m²` : 'Not specified'}</p>
-                                        <p><span className="font-semibold">Created:</span> {new Date(property.created_at).toLocaleDateString()}</p>
+                                        <div className="mb-2">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="font-semibold">Tenants:</span>
+                                                <span className={`text-sm font-medium ${
+                                                    property.capacity_status === 'at_capacity' ? 'text-error' :
+                                                    property.capacity_status === 'near_capacity' ? 'text-warning' :
+                                                    property.capacity_status === 'unlimited' ? 'text-info' : 'text-success'
+                                                }`}>
+                                                    {property.number_of_tenants === null ? 
+                                                        `${property.current_tenant_count || 0} (Unlimited)` :
+                                                        `${property.current_tenant_count || 0}/${property.number_of_tenants}`
+                                                    }
+                                                </span>
+                                            </div>
+                                            {property.number_of_tenants !== null && (
+                                                <div className="w-full bg-base-300 rounded-full h-2">
+                                                    <div 
+                                                        className={`h-2 rounded-full transition-all duration-300 ${
+                                                            property.capacity_status === 'at_capacity' ? 'bg-error' :
+                                                            property.capacity_status === 'near_capacity' ? 'bg-warning' : 'bg-success'
+                                                        }`}
+                                                        style={{ 
+                                                            width: `${Math.min(100, ((property.current_tenant_count || 0) / property.number_of_tenants) * 100)}%` 
+                                                        }}
+                                                    ></div>
+                                                </div>
+                                            )}
+                                            <div className="text-xs mt-1">
+                                                <span className={`badge badge-sm ${
+                                                    property.capacity_status === 'at_capacity' ? 'badge-error' :
+                                                    property.capacity_status === 'near_capacity' ? 'badge-warning' :
+                                                    property.capacity_status === 'unlimited' ? 'badge-info' : 'badge-success'
+                                                }`}>
+                                                    {property.capacity_status === 'at_capacity' ? 'At Capacity' :
+                                                     property.capacity_status === 'near_capacity' ? 'Near Capacity' :
+                                                     property.capacity_status === 'unlimited' ? 'Unlimited' : 'Available'}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="card-actions justify-end mt-4">
                                         <div className="tooltip" data-tip="Edit property details">

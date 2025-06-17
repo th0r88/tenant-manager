@@ -92,5 +92,9 @@ export const dashboardApi = {
     getUtilityBreakdown: (months = 3) => fetch(`${API_BASE}/dashboard/utility-breakdown/${months}`).then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
         return r.json();
+    }),
+    getCapacityMetrics: () => fetch(`${API_BASE}/dashboard/capacity-metrics`).then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+        return r.json();
     })
 };
