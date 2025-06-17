@@ -11,11 +11,11 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-    const { name, address, property_type } = req.body;
+    const { name, address, property_type, house_area } = req.body;
     
     db.run(
-        'INSERT INTO properties (name, address, property_type) VALUES (?, ?, ?)',
-        [name, address, property_type],
+        'INSERT INTO properties (name, address, property_type, house_area) VALUES (?, ?, ?, ?)',
+        [name, address, property_type, house_area],
         function(err) {
             if (err) return res.status(400).json({ error: err.message });
             res.json({ id: this.lastID, ...req.body });
@@ -24,11 +24,11 @@ router.post('/', (req, res) => {
 });
 
 router.put('/:id', (req, res) => {
-    const { name, address, property_type } = req.body;
+    const { name, address, property_type, house_area } = req.body;
     
     db.run(
-        'UPDATE properties SET name=?, address=?, property_type=? WHERE id=?',
-        [name, address, property_type, req.params.id],
+        'UPDATE properties SET name=?, address=?, property_type=?, house_area=? WHERE id=?',
+        [name, address, property_type, house_area, req.params.id],
         function(err) {
             if (err) return res.status(400).json({ error: err.message });
             res.json({ id: req.params.id, ...req.body });

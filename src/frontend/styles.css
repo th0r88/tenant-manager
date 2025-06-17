@@ -22,3 +22,14 @@
   table-layout: fixed;
   width: 100%;
 }
+
+/* Form field consistency */
+.form-control .input,
+.form-control .select {
+  @apply w-full;
+}
+
+/* Ensure form elements are properly aligned */
+.form-control {
+  @apply w-full;
+}

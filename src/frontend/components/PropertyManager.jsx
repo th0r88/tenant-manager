@@ -5,15 +5,20 @@ export default function PropertyManager({ properties, onPropertyChange, onError,
     const [formData, setFormData] = useState({
         name: '',
         address: '',
-        property_type: ''
+        property_type: '',
+        house_area: ''
     });
     const [editing, setEditing] = useState(null);
     const [deleteModal, setDeleteModal] = useState(null);
 
     const handleChange = (e) => {
+        const value = e.target.name === 'house_area' 
+            ? (e.target.value === '' ? '' : parseFloat(e.target.value) || '')
+            : e.target.value;
+        
         setFormData({
             ...formData,
-            [e.target.name]: e.target.value
+            [e.target.name]: value
         });
     };
 
@@ -27,7 +32,7 @@ export default function PropertyManager({ properties, onPropertyChange, onError,
                 await propertyApi.create(formData);
                 onSuccess('Property created successfully');
             }
-            setFormData({ name: '', address: '', property_type: '' });
+            setFormData({ name: '', address: '', property_type: '', house_area: '' });
             setEditing(null);
             onPropertyChange();
         } catch (err) {
@@ -39,7 +44,8 @@ export default function PropertyManager({ properties, onPropertyChange, onError,
         setFormData({
             name: property.name,
             address: property.address,
-            property_type: property.property_type
+            property_type: property.property_type,
+            house_area: property.house_area || ''
         });
         setEditing(property);
     };
@@ -57,7 +63,7 @@ export default function PropertyManager({ properties, onPropertyChange, onError,
     };
 
     const handleCancel = () => {
-        setFormData({ name: '', address: '', property_type: '' });
+        setFormData({ name: '', address: '', property_type: '', house_area: '' });
         setEditing(null);
     };
 
@@ -78,7 +84,7 @@ export default function PropertyManager({ properties, onPropertyChange, onError,
                                     value={formData.name}
                                     onChange={handleChange}
                                     placeholder="e.g., Main Building, Apartment Complex A"
-                                    className="input input-bordered"
+                                    className="input input-bordered w-full"
                                     required
                                 />
                             </div>
@@ -92,8 +98,23 @@ export default function PropertyManager({ properties, onPropertyChange, onError,
                                     value={formData.address}
                                     onChange={handleChange}
                                     placeholder="e.g., Trubarjeva 1, 1000 Ljubljana"
-                                    className="input input-bordered"
+                                    className="input input-bordered w-full"
                                     required
+                                />
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">House Area (m²)</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    name="house_area"
+                                    value={formData.house_area}
+                                    onChange={handleChange}
+                                    placeholder="e.g., 120"
+                                    className="input input-bordered w-full"
+                                    min="0"
+                                    step="0.01"
                                 />
                             </div>
                             <div className="form-control">
@@ -104,16 +125,13 @@ export default function PropertyManager({ properties, onPropertyChange, onError,
                                     name="property_type" 
                                     value={formData.property_type} 
                                     onChange={handleChange} 
-                                    className="select select-bordered"
+                                    className="select select-bordered w-full"
                                     required
                                 >
                                     <option value="">Select property type</option>
-                                    <option value="Apartment Building">Apartment Building</option>
-                                    <option value="Office Building">Office Building</option>
-                                    <option value="Commercial Space">Commercial Space</option>
-                                    <option value="Mixed Use">Mixed Use</option>
-                                    <option value="Single Family">Single Family</option>
-                                    <option value="Other">Other</option>
+                                    <option value="Room">Room</option>
+                                    <option value="Apartment">Apartment</option>
+                                    <option value="House">House</option>
                                 </select>
                             </div>
                         </div>
@@ -148,6 +166,7 @@ export default function PropertyManager({ properties, onPropertyChange, onError,
                                     <div className="space-y-2">
                                         <p><span className="font-semibold">Address:</span> {property.address}</p>
                                         <p><span className="font-semibold">Type:</span> {property.property_type}</p>
+                                        <p><span className="font-semibold">House Area:</span> {property.house_area ? `${property.house_area} m²` : 'Not specified'}</p>
                                         <p><span className="font-semibold">Created:</span> {new Date(property.created_at).toLocaleDateString()}</p>
                                     </div>
                                     <div className="card-actions justify-end mt-4">
