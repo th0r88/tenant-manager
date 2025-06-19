@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "node src/backend/server.js",
-    "client": "vite src/frontend --port 3000",
+    "client": "vite --port 3000",
     "build": "vite build",
     "preview": "vite preview src/frontend",
     "clean": "rm -rf dist node_modules package-lock.json",
