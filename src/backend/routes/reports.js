@@ -39,12 +39,12 @@ router.get('/summary/:month/:year', (req, res) => {
 router.get('/:tenantId/:month/:year', (req, res) => {
     const { tenantId, month, year } = req.params;
     
-    db.get('SELECT * FROM tenants WHERE id = ?', [tenantId], (err, tenant) => {
+    db.get('SELECT t.*, p.name as property_name FROM tenants t JOIN properties p ON t.property_id = p.id WHERE t.id = ?', [tenantId], (err, tenant) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
         
         db.all(
-            `SELECT ue.utility_type, tua.allocated_amount 
+            `SELECT ue.utility_type, ue.total_amount, ue.allocation_method, tua.allocated_amount 
              FROM tenant_utility_allocations tua
              JOIN utility_entries ue ON tua.utility_entry_id = ue.id
              WHERE tua.tenant_id = ? AND ue.month = ? AND ue.year = ?`,

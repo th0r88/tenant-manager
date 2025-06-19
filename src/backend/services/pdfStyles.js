@@ -31,10 +31,10 @@ export const PDF_STYLES = {
     maintenance: '#059669'   // Green for maintenance
   },
 
-  // Typography
+  // Typography - Using DejaVu Sans for perfect Slovenian character support
   fonts: {
-    primary: 'Helvetica',
-    secondary: 'Helvetica-Bold',
+    primary: 'DejaVuSans',
+    secondary: 'DejaVuSans-Bold',
     mono: 'Courier'
   },
 
@@ -332,52 +332,6 @@ export const PDF_UTILS = {
     return currentY + PDF_STYLES.spacing.section;
   },
 
-  // Draw allocation method indicator badge
-  drawAllocationBadge(doc, x, y, method, options = {}) {
-    const {
-      width = 120,
-      height = 20
-    } = options;
-
-    let badgeText, badgeColor, icon;
-    
-    switch (method) {
-      case 'per_person':
-        badgeText = '👤 Per Person';
-        badgeColor = PDF_STYLES.colors.accent;
-        break;
-      case 'per_sqm':
-        badgeText = '📐 Per Sqm';
-        badgeColor = PDF_STYLES.colors.primary;
-        break;
-      case 'per_person_weighted':
-        badgeText = '👤⚖ Weighted/Person';
-        badgeColor = PDF_STYLES.colors.warning;
-        break;
-      case 'per_sqm_weighted':
-        badgeText = '📐⚖ Weighted/Sqm';
-        badgeColor = PDF_STYLES.colors.secondary;
-        break;
-      default:
-        badgeText = '❓ Unknown';
-        badgeColor = PDF_STYLES.colors.textLight;
-    }
-
-    // Badge background
-    const badgeRgb = this.hexToRgb(badgeColor);
-    doc.roundedRect(x, y, width, height, 10)
-       .fill(badgeRgb);
-
-    // Badge text
-    this.addStyledText(doc, badgeText, x + 8, y + 4, {
-      fontSize: PDF_STYLES.fontSize.tiny,
-      color: PDF_STYLES.colors.white,
-      font: PDF_STYLES.fonts.secondary
-    });
-
-    return y + height + PDF_STYLES.spacing.small;
-  },
-
   // Draw a card with shadow effect
   drawCardWithShadow(doc, x, y, width, height, options = {}) {
     const {
@@ -405,17 +359,17 @@ export const PDF_UTILS = {
     const type = utilityType.toLowerCase();
     
     if (type.includes('elektrika') || type.includes('electricity')) {
-      return { icon: '⚡', color: PDF_STYLES.colors.electricity, name: 'Electricity' };
+      return { icon: '', color: PDF_STYLES.colors.electricity, name: 'Electricity' };
     } else if (type.includes('voda') || type.includes('water')) {
-      return { icon: '💧', color: PDF_STYLES.colors.water, name: 'Water' };
+      return { icon: '', color: PDF_STYLES.colors.water, name: 'Water' };
     } else if (type.includes('ogrevanje') || type.includes('heating') || type.includes('plin')) {
-      return { icon: '🔥', color: PDF_STYLES.colors.heating, name: 'Heating' };
+      return { icon: '', color: PDF_STYLES.colors.heating, name: 'Heating' };
     } else if (type.includes('internet') || type.includes('wifi') || type.includes('net')) {
-      return { icon: '🌐', color: PDF_STYLES.colors.internet, name: 'Internet' };
+      return { icon: '', color: PDF_STYLES.colors.internet, name: 'Internet' };
     } else if (type.includes('vzdrževanje') || type.includes('maintenance')) {
-      return { icon: '🔧', color: PDF_STYLES.colors.maintenance, name: 'Maintenance' };
+      return { icon: '', color: PDF_STYLES.colors.maintenance, name: 'Maintenance' };
     } else {
-      return { icon: '📋', color: PDF_STYLES.colors.secondary, name: 'Other' };
+      return { icon: '', color: PDF_STYLES.colors.secondary, name: 'Other' };
     }
   },
 
@@ -492,149 +446,6 @@ export const PDF_UTILS = {
        .fill(statusRgb);
        
     return x + size * 2 + 5;
-  }
-,
-  // Check if new page is needed
-  needsNewPage(doc, currentY, contentHeight) {
-    const pageBreakMargin = 100;
-    const availableSpace = PDF_STYLES.layout.pageHeight - currentY - PDF_STYLES.spacing.pageMargin;
-    return availableSpace < (contentHeight + pageBreakMargin);
-  },
-
-  // Add new page with header and footer
-  addNewPage(doc, pageNumber) {
-    doc.addPage();
-    
-    // Add page number to footer
-    const footerY = PDF_STYLES.layout.pageHeight - PDF_STYLES.spacing.pageMargin - 20;
-    this.addStyledText(doc, `Page ${pageNumber}`, PDF_STYLES.spacing.pageMargin, footerY, {
-      fontSize: PDF_STYLES.fontSize.tiny,
-      color: PDF_STYLES.colors.textMuted
-    });
-    
-    return PDF_STYLES.spacing.pageMargin + 30;
-  },
-
-  // Generate QR code for payment using UPN format (Slovenia standard)
-  async generatePaymentQR(amount, reference, bankDetails) {
-    try {
-      const QRCode = require('qrcode');
-      
-      // UPN QR format for Slovenian banking system
-      const upnData = [
-        'UPNQR',                              // UPN QR identifier
-        '',                                   // Payment description (empty for standard)
-        '',                                   // Payment purpose code (empty for standard)
-        '',                                   // Payment deadline (empty)
-        bankDetails.iban || 'SI56123456789012345',  // Recipient IBAN
-        'SI99',                               // Recipient reference model
-        reference,                            // Recipient reference
-        'Property Management System',          // Recipient name
-        'Ljubljanska cesta 1',                // Recipient address line 1
-        '1000 Ljubljana',                     // Recipient address line 2
-        amount,                               // Amount (without EUR)
-        '',                                   // Payment description (can be empty)
-        'OTHR'                                // Purpose code for other payments
-      ].join('\n');
-      
-      const qrDataUrl = await QRCode.toDataURL(upnData, {
-        width: 120,
-        margin: 2,
-        errorCorrectionLevel: 'M',
-        color: {
-          dark: PDF_STYLES.colors.primaryDark,
-          light: PDF_STYLES.colors.white
-        }
-      });
-      
-      return qrDataUrl;
-    } catch (error) {
-      console.error('UPN QR code generation failed:', error);
-      return null;
-    }
-  },
-
-  // Draw occupancy timeline
-  drawOccupancyTimeline(doc, x, y, width, startDate, endDate, currentMonth, currentYear) {
-    const timelineHeight = 40;
-    const padding = 10;
-    
-    // Timeline background
-    this.drawCard(doc, x, y, width, timelineHeight, {
-      fillColor: PDF_STYLES.colors.backgroundDark,
-      borderColor: PDF_STYLES.colors.border
-    });
-    
-    // Calculate month range for the timeline
-    const monthStart = new Date(currentYear, currentMonth - 1, 1);
-    const monthEnd = new Date(currentYear, currentMonth, 0);
-    
-    const moveInDate = startDate ? new Date(startDate) : null;
-    const moveOutDate = endDate ? new Date(endDate) : null;
-    
-    // Draw timeline bar
-    const barY = y + 15;
-    const barHeight = 10;
-    const barWidth = width - (padding * 2);
-    
-    // Full month background
-    const bgRgb = this.hexToRgb(PDF_STYLES.colors.border);
-    doc.rect(x + padding, barY, barWidth, barHeight)
-       .fill(bgRgb);
-    
-    // Calculate occupancy periods
-    let occupancyStart = 0;
-    let occupancyWidth = barWidth;
-    
-    if (moveInDate && moveInDate > monthStart) {
-      const daysFromStart = Math.max(0, (moveInDate - monthStart) / (1000 * 60 * 60 * 24));
-      occupancyStart = (daysFromStart / monthEnd.getDate()) * barWidth;
-    }
-    
-    if (moveOutDate && moveOutDate < monthEnd) {
-      const daysToEnd = Math.max(0, (moveOutDate - monthStart) / (1000 * 60 * 60 * 24));
-      occupancyWidth = (daysToEnd / monthEnd.getDate()) * barWidth - occupancyStart;
-    } else {
-      occupancyWidth = barWidth - occupancyStart;
-    }
-    
-    // Draw occupied period
-    if (occupancyWidth > 0) {
-      const occupiedRgb = this.hexToRgb(PDF_STYLES.colors.accent);
-      doc.rect(x + padding + occupancyStart, barY, occupancyWidth, barHeight)
-         .fill(occupiedRgb);
-    }
-    
-    // Add labels
-    this.addStyledText(doc, '1', x + padding - 5, y + 5, {
-      fontSize: PDF_STYLES.fontSize.micro,
-      color: PDF_STYLES.colors.textMuted
-    });
-    
-    this.addStyledText(doc, monthEnd.getDate().toString(), x + width - padding - 5, y + 5, {
-      fontSize: PDF_STYLES.fontSize.micro,
-      color: PDF_STYLES.colors.textMuted
-    });
-    
-    // Move-in marker
-    if (moveInDate && moveInDate > monthStart && moveInDate <= monthEnd) {
-      const markerX = x + padding + occupancyStart;
-      this.addStyledText(doc, '🏠', markerX - 8, y + 2, {
-        fontSize: PDF_STYLES.fontSize.small,
-        color: PDF_STYLES.colors.accent
-      });
-    }
-    
-    // Move-out marker
-    if (moveOutDate && moveOutDate >= monthStart && moveOutDate < monthEnd) {
-      const markerX = x + padding + occupancyStart + occupancyWidth;
-      this.addStyledText(doc, '📦', markerX - 8, y + 2, {
-        fontSize: PDF_STYLES.fontSize.small,
-        color: PDF_STYLES.colors.warning
-      });
-    }
-    
-    return y + timelineHeight + PDF_STYLES.spacing.small;
   },
 
   // Generate optimized filename
