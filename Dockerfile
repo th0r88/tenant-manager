@@ -12,7 +12,7 @@ RUN addgroup -g 1001 -S tenant-manager && \
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm install --omit=dev --prefer-offline --no-audit && npm cache clean --force
 
 # Copy application code
 COPY . .
