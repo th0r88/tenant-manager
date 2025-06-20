@@ -1,5 +1,24 @@
 # Tenant Management System - Production Dockerfile
-FROM node:20-alpine
+
+# Build stage for frontend
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including dev dependencies for building)
+RUN npm ci
+
+# Copy application code
+COPY . .
+
+# Build the frontend
+RUN npm run build
+
+# Production stage
+FROM node:20-alpine AS production
 
 # Set working directory
 WORKDIR /app
@@ -17,13 +36,17 @@ RUN addgroup -g 1001 -S tenant-manager && \
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies and clean up build deps in one layer
+# Install only production dependencies and clean up build deps in one layer
 RUN npm install --omit=dev --prefer-offline --no-audit && \
     npm cache clean --force && \
     apk del .build-deps
 
-# Copy application code
-COPY . .
+# Copy application code (backend)
+COPY src/ ./src/
+COPY public/ ./public/
+
+# Copy built frontend from builder stage
+COPY --from=builder /app/dist ./dist
 
 # Create necessary directories and set permissions
 RUN mkdir -p /app/backups /app/alerts /app/logs && \

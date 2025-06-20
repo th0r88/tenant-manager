@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { initializeDatabase } from './database/db.js';
 import backupService from './services/backupService.js';
 import { errorHandler, validateRequest } from './middleware/errorHandler.js';
@@ -18,6 +20,7 @@ import billingPeriodsRouter from './routes/billingPeriods.js';
 import occupancyTrackingRouter from './routes/occupancyTracking.js';
 
 const app = express();
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Validate configuration on startup
 config.validate();
@@ -98,6 +101,20 @@ app.use('/api/reports', reportsRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/billing-periods', billingPeriodsRouter);
 app.use('/api/occupancy-tracking', occupancyTrackingRouter);
+
+// Serve static files from the built frontend
+const distPath = join(__dirname, '..', '..', 'dist');
+app.use(express.static(distPath));
+
+// Handle client-side routing - serve index.html for all non-API routes
+app.get('*', (req, res) => {
+    // Skip API routes
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: 'API endpoint not found' });
+    }
+    
+    res.sendFile(join(distPath, 'index.html'));
+});
 
 // Alert management endpoints (disabled)
 // app.get('/api/alerts', async (req, res) => {
