@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent horizontal page shifting by always showing scrollbar */
+html {
+  overflow-y: scroll;
+}
+
 /* Address truncation utilities */
 .address-truncate {
   @apply truncate;

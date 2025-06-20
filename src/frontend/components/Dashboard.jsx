@@ -32,7 +32,7 @@ export default function Dashboard() {
             ] = await Promise.all([
                 dashboardApi.getOverview(),
                 dashboardApi.getPropertiesBreakdown(),
-                dashboardApi.getRecentActivity(8),
+                dashboardApi.getRecentActivity(6),
                 dashboardApi.getRevenueTrends(6),
                 dashboardApi.getUtilityBreakdown(3),
                 dashboardApi.getCapacityMetrics()
@@ -116,7 +116,7 @@ export default function Dashboard() {
             </div>
 
             {/* Properties Breakdown, Capacity Overview, and Recent Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-[calc(38%-1rem)_calc(24%-1rem)_calc(38%-1rem)] gap-6">
                 {/* Properties Breakdown */}
                 <div className="card bg-base-100 shadow-xl">
                     <div className="card-body">
@@ -158,11 +158,11 @@ export default function Dashboard() {
                         <div className="card-body">
                             <h2 className="card-title text-xl mb-4">{t('dashboard.capacityOverview')}</h2>
                             <div className="space-y-3">
-                                <div className="stat">
+                                <div className="stat" style={{ borderRight: 'none' }}>
                                     <div className="stat-title text-sm">{t('dashboard.totalCapacity')}</div>
                                     <div className="stat-value text-2xl text-primary">{capacityMetrics.totalCapacity || t('dashboard.unlimited')}</div>
                                 </div>
-                                <div className="stat">
+                                <div className="stat" style={{ borderRight: 'none' }}>
                                     <div className="stat-title text-sm">{t('dashboard.currentOccupancy')}</div>
                                     <div className="stat-value text-2xl text-secondary">{capacityMetrics.totalOccupied || 0}</div>
                                 </div>
@@ -197,7 +197,7 @@ export default function Dashboard() {
                                         <div className="flex-1">
                                             <div className="font-medium text-sm">
                                                 {activity.type === 'tenant' ? t('dashboard.newTenant') : t('dashboard.utilityEntry')}
-                                                <span className="font-bold">{activity.description}</span>
+                                                <span className="font-bold"> {activity.description}</span>
                                             </div>
                                             <div className="text-xs opacity-70">
                                                 {activity.property_name} • {formatDate(activity.timestamp)}
@@ -211,67 +211,68 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* Revenue Trends */}
-            <div className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                    <h2 className="card-title text-2xl mb-4">{t('dashboard.revenueTrends')}</h2>
-                    {revenueTrends.length === 0 ? (
-                        <div className="text-center py-8 opacity-50">
-                            <p>{t('dashboard.noRevenueData')}</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="table table-zebra">
-                                <thead>
-                                    <tr>
-                                        <th>{t('dashboard.period')}</th>
-                                        <th>{t('dashboard.rentRevenue')}</th>
-                                        <th>{t('dashboard.utilityRevenue')}</th>
-                                        <th>{t('dashboard.totalRevenue')}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {revenueTrends.map((trend, index) => (
-                                        <tr key={index}>
-                                            <td className="font-medium">{trend.month}/{trend.year}</td>
-                                            <td>{formatCurrency(trend.rent_revenue)}</td>
-                                            <td>{formatCurrency(trend.utility_revenue)}</td>
-                                            <td className="font-bold text-success">{formatCurrency(trend.total_revenue)}</td>
+            {/* Revenue Trends and Utility Breakdown */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Revenue Trends */}
+                <div className="card bg-base-100 shadow-xl">
+                    <div className="card-body">
+                        <h2 className="card-title text-2xl mb-4">{t('dashboard.revenueTrends')}</h2>
+                        {revenueTrends.length === 0 ? (
+                            <div className="text-center py-8 opacity-50">
+                                <p>{t('dashboard.noRevenueData')}</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="table table-zebra w-full">
+                                    <thead>
+                                        <tr>
+                                            <th className="whitespace-nowrap">{t('dashboard.period')}</th>
+                                            <th className="whitespace-nowrap">{t('dashboard.rentRevenue')}</th>
+                                            <th className="whitespace-nowrap">{t('dashboard.utilityRevenue')}</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                                    </thead>
+                                    <tbody>
+                                        {revenueTrends.map((trend, index) => (
+                                            <tr key={index}>
+                                                <td className="font-medium whitespace-nowrap">{trend.month}/{trend.year}</td>
+                                                <td className="whitespace-nowrap">{formatCurrency(trend.rent_revenue)}</td>
+                                                <td className="whitespace-nowrap">{formatCurrency(trend.utility_revenue)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
 
-            {/* Utility Breakdown */}
-            <div className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                    <h2 className="card-title text-2xl mb-4">{t('dashboard.utilityCostsBreakdown')}</h2>
-                    {utilityBreakdown.length === 0 ? (
-                        <div className="text-center py-8 opacity-50">
-                            <p>{t('dashboard.noUtilityData')}</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {utilityBreakdown.map((utility, index) => (
-                                <div key={index} className="card bg-base-200 shadow">
-                                    <div className="card-body">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <h3 className="card-title text-lg">{utility.utility_type}</h3>
-                                            <div className="text-2xl font-bold text-primary">{formatCurrency(utility.total_amount)}</div>
-                                        </div>
-                                        <div className="flex justify-between text-sm opacity-70">
-                                            <span>{utility.entry_count} {t('dashboard.entriesAcrossProperties')} {utility.properties_count} {t('dashboard.propertiesCount')}</span>
-                                            <span>{t('dashboard.average')} {formatCurrency(utility.avg_amount)}</span>
+                {/* Utility Breakdown */}
+                <div className="card bg-base-100 shadow-xl">
+                    <div className="card-body">
+                        <h2 className="card-title text-2xl mb-4">{t('dashboard.utilityCostsBreakdown')}</h2>
+                        {utilityBreakdown.length === 0 ? (
+                            <div className="text-center py-8 opacity-50">
+                                <p>{t('dashboard.noUtilityData')}</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {utilityBreakdown.map((utility, index) => (
+                                    <div key={index} className="card bg-base-200 shadow">
+                                        <div className="card-body">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <h3 className="card-title text-lg">{utility.utility_type}</h3>
+                                                <div className="text-2xl font-bold text-primary">{formatCurrency(utility.total_amount)}</div>
+                                            </div>
+                                            <div className="flex justify-between text-sm opacity-70">
+                                                <span>{utility.entry_count} {t('dashboard.entriesAcrossProperties')} {utility.properties_count} {t('dashboard.propertiesCount')}</span>
+                                                <span>{t('dashboard.average')} {formatCurrency(utility.avg_amount)}</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
