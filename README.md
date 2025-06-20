@@ -104,3 +104,5 @@ src/
 ## License
 
 Private project for property management in Slovenia.
+
+Created with help of Claude Code
