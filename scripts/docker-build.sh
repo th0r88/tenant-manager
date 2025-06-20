@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-DOCKER_USERNAME="${DOCKER_USERNAME:-YOUR_USERNAME}"  # Replace with your username
+DOCKER_USERNAME="${DOCKER_USERNAME:-jferme}"  # Replace with your username
 IMAGE_NAME="tenant-manager"
 REGISTRY="${DOCKER_USERNAME}/${IMAGE_NAME}"
 

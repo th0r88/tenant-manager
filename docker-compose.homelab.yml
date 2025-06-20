@@ -1,6 +1,6 @@
 services:
   tenant-manager:
-    build: .
+    image: jferme/tenant-manager:latest
     container_name: tenant-manager-homelab
     restart: unless-stopped
     ports:
