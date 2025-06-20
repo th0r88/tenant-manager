@@ -4,6 +4,12 @@ FROM node:20-alpine
 # Set working directory
 WORKDIR /app
 
+# Install build dependencies for sqlite3 and other native modules
+RUN apk add --no-cache --virtual .build-deps \
+    python3 \
+    make \
+    g++
+
 # Create non-root user for security
 RUN addgroup -g 1001 -S tenant-manager && \
     adduser -S tenant-manager -u 1001
@@ -11,8 +17,10 @@ RUN addgroup -g 1001 -S tenant-manager && \
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --omit=dev --prefer-offline --no-audit && npm cache clean --force
+# Install dependencies and clean up build deps in one layer
+RUN npm install --omit=dev --prefer-offline --no-audit && \
+    npm cache clean --force && \
+    apk del .build-deps
 
 # Copy application code
 COPY . .

@@ -99,7 +99,7 @@ build_staging() {
     print_info "Building staging image for multiple architectures..."
     
     docker buildx build \
-        --platform linux/amd64,linux/arm64,linux/arm/v7 \
+        --platform linux/amd64,linux/arm64 \
         --tag $REGISTRY:staging \
         --push \
         .
@@ -127,7 +127,7 @@ build_prod() {
     fi
     
     docker buildx build \
-        --platform linux/amd64,linux/arm64,linux/arm/v7 \
+        --platform linux/amd64,linux/arm64 \
         --tag $REGISTRY:$version \
         --tag $REGISTRY:latest \
         --push \
