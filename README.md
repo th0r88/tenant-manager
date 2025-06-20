@@ -105,4 +105,4 @@ src/
 
 Private project for property management in Slovenia.
 
-Created with help of Claude Code
+Created with help of Claude Code!
