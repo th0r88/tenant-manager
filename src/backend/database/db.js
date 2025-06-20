@@ -6,11 +6,24 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const db = new sqlite3.Database('tenant_manager.db');
+// Enable verbose mode for debugging
+sqlite3.verbose();
 
-// Set UTF-8 encoding and enable foreign keys
-db.exec('PRAGMA encoding = "UTF-8"');
-db.exec('PRAGMA foreign_keys = ON');
+const db = new sqlite3.Database('tenant_manager.db', sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
+    if (err) {
+        console.error('Error opening database:', err);
+    } else {
+        console.log('Database opened successfully');
+        // Enable foreign keys and set encoding immediately after opening
+        db.exec('PRAGMA foreign_keys = ON; PRAGMA encoding = "UTF-8";', (err) => {
+            if (err) {
+                console.error('Error setting pragma:', err);
+            } else {
+                console.log('Database pragma settings applied');
+            }
+        });
+    }
+});
 
 export function initializeDatabase() {
     const schema = readFileSync(join(__dirname, 'schema.sql'), 'utf8');
