@@ -18,7 +18,10 @@ export function initializeDatabase() {
             } else {
                 console.log('Database initialized successfully');
                 // Run migration for existing installations
-                runMigration().then(resolve).catch(reject);
+                runMigration()
+                    .then(() => applyConstraints())
+                    .then(resolve)
+                    .catch(reject);
             }
         });
     });
@@ -34,6 +37,22 @@ function runMigration() {
                 resolve(); // Don't fail on migration errors for new installations
             } else {
                 console.log('Migration completed successfully');
+                resolve();
+            }
+        });
+    });
+}
+
+function applyConstraints() {
+    const constraints = readFileSync(join(__dirname, 'constraints.sql'), 'utf8');
+    
+    return new Promise((resolve, reject) => {
+        db.exec(constraints, (error) => {
+            if (error) {
+                console.log('Some constraints skipped (may already exist)');
+                resolve(); // Don't fail on constraint errors
+            } else {
+                console.log('Database constraints applied successfully');
                 resolve();
             }
         });

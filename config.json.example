@@ -1,0 +1,65 @@
+{
+  "server": {
+    "port": 3001,
+    "host": "0.0.0.0",
+    "cors": {
+      "origin": true,
+      "credentials": true
+    }
+  },
+  "database": {
+    "path": "tenant_manager.db",
+    "timeout": 30000,
+    "busyTimeout": 30000,
+    "backup": {
+      "enabled": true,
+      "interval": 24,
+      "retention": 30,
+      "directory": "./backups"
+    }
+  },
+  "logging": {
+    "level": "info",
+    "enableConsole": true,
+    "enableFile": false,
+    "maxFileSize": "10MB",
+    "maxFiles": 5
+  },
+  "monitoring": {
+    "healthCheck": {
+      "enabled": true,
+      "interval": 300000,
+      "timeout": 5000
+    },
+    "metrics": {
+      "enabled": false,
+      "port": 3002
+    }
+  },
+  "security": {
+    "requestTimeout": 30000,
+    "maxRequestSize": "10MB",
+    "rateLimit": {
+      "enabled": false,
+      "windowMs": 900000,
+      "max": 1000
+    }
+  },
+  "errorRecovery": {
+    "circuitBreaker": {
+      "failureThreshold": 5,
+      "resetTimeout": 30000,
+      "timeoutThreshold": 60000
+    },
+    "retry": {
+      "maxAttempts": 3,
+      "baseDelay": 1000,
+      "maxDelay": 10000
+    }
+  },
+  "pdf": {
+    "timeout": 30000,
+    "maxConcurrent": 3,
+    "tempDirectory": "./temp/pdf"
+  }
+}

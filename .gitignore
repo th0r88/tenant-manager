@@ -62,7 +62,10 @@ Thumbs.db
 tmp/
 temp/
 
+# Backups
+backups/
+
 # Claude generated folder/files
 
 .claude/
-CLAUDE.md 
+CLAUDE.md

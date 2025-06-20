@@ -1,5 +1,6 @@
 import express from 'express';
 import db from '../database/db.js';
+import { validateProperty } from '../middleware/validationMiddleware.js';
 
 const router = express.Router();
 
@@ -30,7 +31,7 @@ router.get('/', (req, res) => {
     });
 });
 
-router.post('/', (req, res) => {
+router.post('/', validateProperty, (req, res) => {
     const { name, address, property_type, house_area, number_of_tenants } = req.body;
     
     // Validate number_of_tenants if provided
@@ -51,7 +52,7 @@ router.post('/', (req, res) => {
     );
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', validateProperty, (req, res) => {
     const { name, address, property_type, house_area, number_of_tenants } = req.body;
     
     // Validate number_of_tenants if provided

@@ -1,6 +1,10 @@
 import express from 'express';
 import db from '../database/db.js';
 import { trackTenantUpdate, trackOccupancyChange } from '../services/occupancyTrackingService.js';
+import { validateTenant } from '../middleware/validationMiddleware.js';
+import { safeDbOperation } from '../middleware/errorHandler.js';
+import errorRecovery from '../utils/errorRecovery.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -22,7 +26,7 @@ router.get('/', (req, res) => {
     });
 });
 
-router.post('/', (req, res) => {
+router.post('/', validateTenant, (req, res) => {
     const { property_id = 1, name, surname, address, emso, tax_number, rent_amount, lease_duration, room_area, move_in_date, move_out_date, occupancy_status } = req.body;
     
     // Check property capacity before adding tenant

@@ -1,47 +1,89 @@
-# Deployment Guide
+# Deployment Guide - Tenant Management System 1.0
 
-## Production Setup
+This guide covers deploying the tenant management system in a homelab environment with production-grade reliability and security hardening.
 
-### Prerequisites
+## Prerequisites
 
-- Node.js 18+ and npm
-- Linux/Ubuntu server (recommended)
-- Domain name (optional)
-- SSL certificate (recommended)
+- Node.js 18+ (LTS recommended)
+- npm 8+
+- SQLite 3
+- Git
 
-### Environment Setup
+## Quick Start
 
-1. **Clone Repository**
-   ```bash
-   git clone https://github.com/th0r88/property-manager.git
-   cd property-manager
-   ```
-
-2. **Install Dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Environment Configuration**
-   ```bash
-   cp .env.example .env
-   # Edit .env with production values
-   ```
-
-4. **Build Application**
-   ```bash
-   npm run build
-   ```
-
-### Production Environment Variables
+### 1. Clone and Setup
 
 ```bash
-# .env
+git clone <repository-url>
+cd tennants
+npm install
+```
+
+### 2. Configuration
+
+Copy environment configuration:
+```bash
+cp .env.example .env
+cp config.json.example config.json
+```
+
+Edit `.env` for your environment:
+```bash
+# Server Configuration
 NODE_ENV=production
 PORT=3001
-DB_PATH=/var/lib/tenant-manager/database.db
-VITE_API_BASE=https://your-domain.com/api
+HOST=0.0.0.0
+
+# Database Configuration
+DATABASE_PATH=tenant_manager.db
+
+# Backup Configuration
+BACKUP_INTERVAL=24
+
+# Logging Configuration
+LOG_LEVEL=info
+LOG_TO_FILE=true
+
+# Health Check Configuration
+HEALTH_CHECK_INTERVAL=300000
 ```
+
+### 3. Initialize Database
+
+```bash
+npm run setup-db
+```
+
+### 4. Start Production Server
+
+```bash
+npm run start:prod
+```
+
+## Configuration Management
+
+### Environment Variables
+
+The system supports configuration through:
+1. **Environment variables** (highest priority)
+2. **config.json file** (medium priority)
+3. **Default values** (lowest priority)
+
+### Key Configuration Options
+
+#### Server Configuration
+- `PORT`: Server port (default: 3001)
+- `HOST`: Server host (default: 0.0.0.0)
+- `NODE_ENV`: Environment (development/production)
+
+#### Database Configuration
+- `DATABASE_PATH`: SQLite database file path
+- `BACKUP_INTERVAL`: Backup frequency in hours (default: 24)
+
+#### Monitoring Configuration
+- `LOG_LEVEL`: Logging level (debug/info/warn/error)
+- `LOG_TO_FILE`: Enable file logging (true/false)
+- `HEALTH_CHECK_INTERVAL`: Health check frequency in milliseconds
 
 ### Process Management
 
