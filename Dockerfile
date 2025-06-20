@@ -43,7 +43,6 @@ RUN npm install --omit=dev --prefer-offline --no-audit && \
 
 # Copy application code (backend)
 COPY src/ ./src/
-COPY public/ ./public/
 
 # Copy built frontend from builder stage
 COPY --from=builder /app/dist ./dist
