@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '../hooks/useTranslation';
 
 export default function TenantForm({ onSubmit, initialData = {}, onCancel, selectedProperty }) {
+    const { t } = useTranslation();
     const [capacityWarning, setCapacityWarning] = useState('');
     const [formData, setFormData] = useState({
         name: '',
@@ -52,14 +54,14 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
         const moveOut = formData.move_out_date ? new Date(formData.move_out_date) : null;
         
         if (moveOut && moveIn >= moveOut) {
-            return 'Move-out date must be after move-in date';
+            return t('tenants.validation.moveOutAfterMoveIn');
         }
         
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
         if (moveIn > today && !initialData?.id) {
-            return 'Move-in date cannot be in the future for new tenants';
+            return t('tenants.validation.moveInNotFuture');
         }
         
         return null;
@@ -80,9 +82,9 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
         }
 
         if (currentCount >= maxCapacity) {
-            setCapacityWarning(`Property is at capacity (${currentCount}/${maxCapacity}). Cannot add new tenant.`);
+            setCapacityWarning(t('tenants.capacity.atCapacity', { current: currentCount, max: maxCapacity }));
         } else if (currentCount / maxCapacity > 0.8) {
-            setCapacityWarning(`Property is near capacity (${currentCount}/${maxCapacity}). Only ${maxCapacity - currentCount} space(s) remaining.`);
+            setCapacityWarning(t('tenants.capacity.nearCapacity', { current: currentCount, max: maxCapacity, remaining: maxCapacity - currentCount }));
         } else {
             setCapacityWarning('');
         }
@@ -130,23 +132,23 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
     return (
         <div className="card bg-base-100 shadow-xl mb-6">
             <div className="card-body">
-                <h2 className="card-title">{initialData?.id ? 'Edit Tenant' : 'Add New Tenant'}</h2>
+                <h2 className="card-title">{initialData?.id ? t('tenants.editTenant') : t('tenants.addTenant')}</h2>
                 
                 {selectedProperty && (
                     <div className="mb-4 p-3 bg-base-200 rounded-lg">
                         <div className="flex justify-between items-center mb-2">
-                            <span className="font-semibold">Selected Property:</span>
+                            <span className="font-semibold">{t('tenants.capacity.selectedProperty')}</span>
                             <span className="text-sm">{selectedProperty.name}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span className="font-semibold">Capacity:</span>
+                            <span className="font-semibold">{t('tenants.capacity.capacity')}</span>
                             <span className={`text-sm font-medium ${
                                 selectedProperty.capacity_status === 'at_capacity' ? 'text-error' :
                                 selectedProperty.capacity_status === 'near_capacity' ? 'text-warning' :
                                 selectedProperty.capacity_status === 'unlimited' ? 'text-info' : 'text-success'
                             }`}>
                                 {selectedProperty.number_of_tenants === null ? 
-                                    `${selectedProperty.current_tenant_count || 0} (Unlimited)` :
+                                    `${selectedProperty.current_tenant_count || 0} ${t('tenants.capacity.unlimited')}` :
                                     `${selectedProperty.current_tenant_count || 0}/${selectedProperty.number_of_tenants}`
                                 }
                             </span>
@@ -182,7 +184,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 justify-items-end">
                         <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text text-right">Name *</span>
+                                <span className="label-text text-right">{t('tenants.form.nameRequired')}</span>
                             </label>
                             <input 
                                 name="name" 
@@ -194,7 +196,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text text-right">Surname *</span>
+                                <span className="label-text text-right">{t('tenants.form.surnameRequired')}</span>
                             </label>
                             <input 
                                 name="surname" 
@@ -206,7 +208,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text text-right">Address *</span>
+                                <span className="label-text text-right">{t('tenants.form.addressRequired')}</span>
                             </label>
                             <input 
                                 name="address" 
@@ -218,7 +220,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text text-right">EMŠO *</span>
+                                <span className="label-text text-right">{t('tenants.form.emsoRequired')}</span>
                             </label>
                             <input 
                                 name="emso" 
@@ -230,7 +232,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text text-right">Tax Number</span>
+                                <span className="label-text text-right">{t('tenants.form.taxNumberOptional')}</span>
                             </label>
                             <input 
                                 name="tax_number" 
@@ -241,7 +243,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text text-right">Rent Amount (€) *</span>
+                                <span className="label-text text-right">{t('tenants.rentAmount')} (€) *</span>
                             </label>
                             <input 
                                 name="rent_amount" 
@@ -255,7 +257,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text text-right">Lease Duration (months) *</span>
+                                <span className="label-text text-right">{t('tenants.form.leaseDurationRequired')}</span>
                             </label>
                             <input 
                                 name="lease_duration" 
@@ -268,7 +270,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text text-right">Room Area (m²) *</span>
+                                <span className="label-text text-right">{t('tenants.form.roomAreaRequired')}</span>
                             </label>
                             <input 
                                 name="room_area" 
@@ -282,7 +284,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text text-right">Move-in Date *</span>
+                                <span className="label-text text-right">{t('tenants.form.moveInDateRequired')}</span>
                             </label>
                             <input 
                                 name="move_in_date" 
@@ -295,7 +297,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text text-right">Move-out Date</span>
+                                <span className="label-text text-right">{t('tenants.form.moveOutDateOptional')}</span>
                             </label>
                             <input 
                                 name="move_out_date" 
@@ -307,7 +309,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text text-right">Occupancy Status *</span>
+                                <span className="label-text text-right">{t('tenants.form.occupancyStatusRequired')}</span>
                             </label>
                             <select
                                 name="occupancy_status"
@@ -316,9 +318,9 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                                 className="select select-bordered w-full"
                                 required
                             >
-                                <option value="active">Active</option>
-                                <option value="pending">Pending</option>
-                                <option value="moved_out">Moved Out</option>
+                                <option value="active">{t('tenants.occupancyStatuses.active')}</option>
+                                <option value="pending">{t('tenants.occupancyStatuses.pending')}</option>
+                                <option value="moved_out">{t('tenants.occupancyStatuses.moved_out')}</option>
                             </select>
                         </div>
                     </div>
@@ -336,7 +338,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                     <div className="card-actions justify-end mt-6">
                         {initialData?.id && (
                             <button type="button" className="btn btn-ghost" onClick={handleCancel}>
-                                Cancel
+                                {t('common.cancel')}
                             </button>
                         )}
                         <button 
@@ -347,7 +349,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                                 validateDates() !== null
                             }
                         >
-                            {initialData?.id ? 'Update Tenant' : 'Add Tenant'}
+                            {initialData?.id ? t('tenants.form.updateTenant') : t('tenants.form.addTenant')}
                         </button>
                     </div>
                 </form>

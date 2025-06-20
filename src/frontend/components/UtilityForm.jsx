@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '../hooks/useTranslation';
 
 export default function UtilityForm({ onSubmit, initialData = {}, onCancel, selectedProperty }) {
+    const { t, getMonthNames, getUtilityTypes } = useTranslation();
     const [formData, setFormData] = useState({
         month: new Date().getMonth() + 1,
         year: new Date().getFullYear(),
@@ -48,12 +50,12 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
     return (
         <div className="card bg-base-100 shadow-xl mb-6">
             <div className="card-body">
-                <h2 className="card-title">{initialData?.id ? 'Edit Utility Cost' : 'Add Utility Cost'}</h2>
+                <h2 className="card-title">{initialData?.id ? t('utilities.editUtility') : t('utilities.addUtilityCost')}</h2>
                 <form onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text">Month *</span>
+                                <span className="label-text">{t('common.month')} *</span>
                             </label>
                             <select 
                                 name="month" 
@@ -62,16 +64,16 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                                 className="select select-bordered w-full" 
                                 required
                             >
-                                {[...Array(12)].map((_, i) => (
+                                {getMonthNames().map((monthName, i) => (
                                     <option key={i + 1} value={i + 1}>
-                                        {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                                        {monthName}
                                     </option>
                                 ))}
                             </select>
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text">Year *</span>
+                                <span className="label-text">{t('common.year')} *</span>
                             </label>
                             <select 
                                 name="year" 
@@ -87,7 +89,7 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text">Utility Type *</span>
+                                <span className="label-text">{t('utilities.utilityType')} *</span>
                             </label>
                             <select 
                                 name="utility_type" 
@@ -96,19 +98,15 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                                 className="select select-bordered w-full" 
                                 required
                             >
-                                <option value="">Select utility type</option>
-                                <option value="Elektrika">Elektrika</option>
-                                <option value="Voda">Voda</option>
-                                <option value="Ogrevanje">Ogrevanje</option>
-                                <option value="Internet">Internet</option>
-                                <option value="TV + RTV prispevek">TV + RTV prispevek</option>
-                                <option value="Snaga">Snaga</option>
-                                <option value="Ostalo">Ostalo</option>
+                                <option value="">{t('forms.selectUtilityType')}</option>
+                                {getUtilityTypes().map(({ key, label }) => (
+                                    <option key={key} value={key}>{label}</option>
+                                ))}
                             </select>
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text">Total Amount (€) *</span>
+                                <span className="label-text">{t('utilities.totalAmount')} (€) *</span>
                             </label>
                             <input 
                                 name="total_amount" 
@@ -122,7 +120,7 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text">Allocation Method *</span>
+                                <span className="label-text">{t('utilities.allocationMethod')} *</span>
                             </label>
                             <select 
                                 name="allocation_method" 
@@ -131,19 +129,19 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                                 className="select select-bordered w-full" 
                                 required
                             >
-                                <option value="per_person">Per Person</option>
-                                <option value="per_sqm">Per Square Meter</option>
+                                <option value="per_person">{t('utilities.perPerson')}</option>
+                                <option value="per_sqm">{t('utilities.perSquareMeter')}</option>
                             </select>
                         </div>
                     </div>
                     <div className="card-actions justify-end mt-6">
                         {initialData?.id && (
                             <button type="button" className="btn btn-ghost" onClick={onCancel}>
-                                Cancel
+                                {t('common.cancel')}
                             </button>
                         )}
                         <button type="submit" className="btn btn-primary">
-                            {initialData?.id ? 'Update Utility' : 'Add Utility'}
+                            {initialData?.id ? t('utilities.updateUtility') : t('utilities.addUtility')}
                         </button>
                     </div>
                 </form>

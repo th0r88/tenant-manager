@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { dashboardApi } from '../services/api';
+import { useTranslation } from '../hooks/useTranslation';
 
 export default function Dashboard() {
+    const { t, formatCurrency, formatDate } = useTranslation();
     const [overview, setOverview] = useState({});
     const [propertiesBreakdown, setPropertiesBreakdown] = useState([]);
     const [recentActivity, setRecentActivity] = useState([]);
@@ -50,8 +52,6 @@ export default function Dashboard() {
         }
     };
 
-    const formatCurrency = (amount) => `${(amount || 0).toFixed(2)}€`;
-    const formatDate = (timestamp) => new Date(timestamp).toLocaleDateString();
 
     if (loading) {
         return (
@@ -63,15 +63,6 @@ export default function Dashboard() {
 
     return (
         <div className="space-y-6">
-            <div className="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-2xl">
-                <div className="hero-content text-center">
-                    <div>
-                        <h1 className="text-4xl font-bold">Multi-Property Dashboard</h1>
-                        <p className="py-6">Comprehensive overview of all your properties</p>
-                    </div>
-                </div>
-            </div>
-            
             {error && (
                 <div className="alert alert-error">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -82,49 +73,45 @@ export default function Dashboard() {
             )}
             
             {/* Overview Statistics */}
-            <div className="stats stats-vertical lg:stats-horizontal shadow w-full">
+            <div className="stats stats-vertical lg:stats-horizontal shadow w-full bg-white">
                 <div className="stat">
                     <div className="stat-figure text-primary">
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-8 h-8" style={{ marginTop: '50%' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-8 0H3m2 0h6" />
                         </svg>
                     </div>
-                    <div className="stat-title">Properties</div>
+                    <div className="stat-title">{t('navigation.properties')}</div>
                     <div className="stat-value text-primary">{overview.properties || 0}</div>
-                    <div className="stat-desc">Total managed properties</div>
                 </div>
                 
                 <div className="stat">
                     <div className="stat-figure text-secondary">
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-8 h-8" style={{ marginTop: '50%' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
                         </svg>
                     </div>
-                    <div className="stat-title">Tenants</div>
+                    <div className="stat-title">{t('navigation.tenants')}</div>
                     <div className="stat-value text-secondary">{overview.tenants || 0}</div>
-                    <div className="stat-desc">Active tenants</div>
                 </div>
                 
                 <div className="stat">
                     <div className="stat-figure text-accent">
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-8 h-8" style={{ marginTop: '50%' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
                     </div>
-                    <div className="stat-title">Monthly Rent</div>
+                    <div className="stat-title">{t('dashboard.monthlyRevenue')}</div>
                     <div className="stat-value text-accent">{formatCurrency(overview.totalRent)}</div>
-                    <div className="stat-desc">Total monthly income</div>
                 </div>
                 
                 <div className="stat">
                     <div className="stat-figure text-success">
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-8 h-8" style={{ marginTop: '50%' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                         </svg>
                     </div>
-                    <div className="stat-title">Effective Occupancy</div>
+                    <div className="stat-title">{t('dashboard.effectiveOccupancy')}</div>
                     <div className="stat-value text-success">{((overview.effectiveOccupancy || overview.avgOccupancy || 0) * 100).toFixed(1)}%</div>
-                    <div className="stat-desc">Weighted by occupancy days</div>
                 </div>
             </div>
 
@@ -133,7 +120,7 @@ export default function Dashboard() {
                 {/* Properties Breakdown */}
                 <div className="card bg-base-100 shadow-xl">
                     <div className="card-body">
-                        <h2 className="card-title text-xl mb-4">Properties Breakdown</h2>
+                        <h2 className="card-title text-xl mb-4">{t('dashboard.propertiesBreakdown')}</h2>
                         <div className="grid grid-cols-1 gap-3">
                             {propertiesBreakdown.map(property => (
                                 <div key={property.id} className="card bg-base-200 shadow">
@@ -142,19 +129,19 @@ export default function Dashboard() {
                                         <p className="text-xs opacity-70 mb-2">{property.address}</p>
                                         <div className="space-y-1 text-sm">
                                             <div className="flex justify-between">
-                                                <span className="font-medium">Type:</span>
-                                                <span>{property.property_type}</span>
+                                                <span className="font-medium">{t('dashboard.type')}</span>
+                                                <span>{t(`properties.propertyTypes.${property.property_type}`) || property.property_type}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="font-medium">Tenants:</span>
+                                                <span className="font-medium">{t('dashboard.tenantsLabel')}</span>
                                                 <span className="badge badge-primary badge-sm">{property.tenant_count}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="font-medium">Monthly Rent:</span>
+                                                <span className="font-medium">{t('dashboard.monthlyRent')}</span>
                                                 <span className="font-bold text-success">{formatCurrency(property.total_rent)}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="font-medium">Total Area:</span>
+                                                <span className="font-medium">{t('dashboard.totalArea')}</span>
                                                 <span>{property.total_area} m²</span>
                                             </div>
                                         </div>
@@ -169,19 +156,19 @@ export default function Dashboard() {
                 {capacityMetrics && (
                     <div className="card bg-base-100 shadow-xl">
                         <div className="card-body">
-                            <h2 className="card-title text-xl mb-4">Capacity Overview</h2>
+                            <h2 className="card-title text-xl mb-4">{t('dashboard.capacityOverview')}</h2>
                             <div className="space-y-3">
                                 <div className="stat">
-                                    <div className="stat-title text-sm">Total Capacity</div>
-                                    <div className="stat-value text-2xl text-primary">{capacityMetrics.totalCapacity || 'Unlimited'}</div>
+                                    <div className="stat-title text-sm">{t('dashboard.totalCapacity')}</div>
+                                    <div className="stat-value text-2xl text-primary">{capacityMetrics.totalCapacity || t('dashboard.unlimited')}</div>
                                 </div>
                                 <div className="stat">
-                                    <div className="stat-title text-sm">Current Occupancy</div>
+                                    <div className="stat-title text-sm">{t('dashboard.currentOccupancy')}</div>
                                     <div className="stat-value text-2xl text-secondary">{capacityMetrics.totalOccupied || 0}</div>
                                 </div>
                                 <div className="stat">
-                                    <div className="stat-title text-sm">Available Spaces</div>
-                                    <div className="stat-value text-2xl text-success">{capacityMetrics.availableSpaces || 'Unlimited'}</div>
+                                    <div className="stat-title text-sm">{t('dashboard.availableSpaces')}</div>
+                                    <div className="stat-value text-2xl text-success">{capacityMetrics.availableSpaces || t('dashboard.unlimited')}</div>
                                 </div>
                             </div>
                         </div>
@@ -191,10 +178,10 @@ export default function Dashboard() {
                 {/* Recent Activity */}
                 <div className="card bg-base-100 shadow-xl">
                     <div className="card-body">
-                        <h2 className="card-title text-xl mb-4">Recent Activity</h2>
+                        <h2 className="card-title text-xl mb-4">{t('dashboard.recentActivity')}</h2>
                         {recentActivity.length === 0 ? (
                             <div className="text-center py-8 opacity-50">
-                                <p>No recent activity</p>
+                                <p>{t('dashboard.noRecentActivity')}</p>
                             </div>
                         ) : (
                             <div className="space-y-2">
@@ -209,7 +196,7 @@ export default function Dashboard() {
                                         </div>
                                         <div className="flex-1">
                                             <div className="font-medium text-sm">
-                                                {activity.type === 'tenant' ? 'New tenant: ' : 'Utility entry: '}
+                                                {activity.type === 'tenant' ? t('dashboard.newTenant') : t('dashboard.utilityEntry')}
                                                 <span className="font-bold">{activity.description}</span>
                                             </div>
                                             <div className="text-xs opacity-70">
@@ -227,20 +214,20 @@ export default function Dashboard() {
             {/* Revenue Trends */}
             <div className="card bg-base-100 shadow-xl">
                 <div className="card-body">
-                    <h2 className="card-title text-2xl mb-4">Revenue Trends (Last 6 Months)</h2>
+                    <h2 className="card-title text-2xl mb-4">{t('dashboard.revenueTrends')}</h2>
                     {revenueTrends.length === 0 ? (
                         <div className="text-center py-8 opacity-50">
-                            <p>No revenue data available</p>
+                            <p>{t('dashboard.noRevenueData')}</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="table table-zebra">
                                 <thead>
                                     <tr>
-                                        <th>Period</th>
-                                        <th>Rent Revenue</th>
-                                        <th>Utility Revenue</th>
-                                        <th>Total Revenue</th>
+                                        <th>{t('dashboard.period')}</th>
+                                        <th>{t('dashboard.rentRevenue')}</th>
+                                        <th>{t('dashboard.utilityRevenue')}</th>
+                                        <th>{t('dashboard.totalRevenue')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -262,10 +249,10 @@ export default function Dashboard() {
             {/* Utility Breakdown */}
             <div className="card bg-base-100 shadow-xl">
                 <div className="card-body">
-                    <h2 className="card-title text-2xl mb-4">Utility Costs Breakdown (Last 3 Months)</h2>
+                    <h2 className="card-title text-2xl mb-4">{t('dashboard.utilityCostsBreakdown')}</h2>
                     {utilityBreakdown.length === 0 ? (
                         <div className="text-center py-8 opacity-50">
-                            <p>No utility data available</p>
+                            <p>{t('dashboard.noUtilityData')}</p>
                         </div>
                     ) : (
                         <div className="space-y-3">
@@ -277,8 +264,8 @@ export default function Dashboard() {
                                             <div className="text-2xl font-bold text-primary">{formatCurrency(utility.total_amount)}</div>
                                         </div>
                                         <div className="flex justify-between text-sm opacity-70">
-                                            <span>{utility.entry_count} entries across {utility.properties_count} properties</span>
-                                            <span>Avg: {formatCurrency(utility.avg_amount)}</span>
+                                            <span>{utility.entry_count} {t('dashboard.entriesAcrossProperties')} {utility.properties_count} {t('dashboard.propertiesCount')}</span>
+                                            <span>{t('dashboard.average')} {formatCurrency(utility.avg_amount)}</span>
                                         </div>
                                     </div>
                                 </div>

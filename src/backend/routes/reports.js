@@ -38,6 +38,7 @@ router.get('/summary/:month/:year', (req, res) => {
 
 router.get('/:tenantId/:month/:year', (req, res) => {
     const { tenantId, month, year } = req.params;
+    const { lang = 'sl' } = req.query;
     
     db.get('SELECT t.*, p.name as property_name FROM tenants t JOIN properties p ON t.property_id = p.id WHERE t.id = ?', [tenantId], (err, tenant) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -53,7 +54,7 @@ router.get('/:tenantId/:month/:year', (req, res) => {
                 if (err) return res.status(500).json({ error: err.message });
                 
                 try {
-                    const pdfBuffer = await generateTenantReport(tenant, month, year, utilities);
+                    const pdfBuffer = await generateTenantReport(tenant, month, year, utilities, { language: lang });
                     
                     const safeName = tenant.name.replace(/[^a-zA-Z0-9]/g, '');
                     const safeSurname = tenant.surname.replace(/[^a-zA-Z0-9]/g, '');
@@ -73,7 +74,7 @@ router.get('/:tenantId/:month/:year', (req, res) => {
 
 // Batch export route for multiple tenant reports as ZIP
 router.post('/batch-export', async (req, res) => {
-    const { tenantIds, month, year } = req.body;
+    const { tenantIds, month, year, language = 'sl' } = req.body;
     
     if (!tenantIds || !Array.isArray(tenantIds) || tenantIds.length === 0) {
         return res.status(400).json({ error: 'tenantIds array is required' });
@@ -149,7 +150,7 @@ router.post('/batch-export', async (req, res) => {
                 });
 
                 // Generate PDF
-                const pdfBuffer = await generateTenantReport(tenant, month, year, utilities);
+                const pdfBuffer = await generateTenantReport(tenant, month, year, utilities, { language });
                 
                 // Create safe filename
                 const safeName = tenant.name.replace(/[^a-zA-Z0-9]/g, '');
@@ -193,7 +194,7 @@ router.post('/batch-export', async (req, res) => {
 
 // Streaming batch export with progress updates
 router.post('/batch-export-stream', async (req, res) => {
-    const { tenantIds, month, year } = req.body;
+    const { tenantIds, month, year, language = 'sl' } = req.body;
     
     if (!tenantIds || !Array.isArray(tenantIds) || tenantIds.length === 0) {
         return res.status(400).json({ error: 'tenantIds array is required' });
@@ -285,7 +286,7 @@ router.post('/batch-export-stream', async (req, res) => {
                 });
 
                 // Generate PDF
-                const pdfBuffer = await generateTenantReport(tenant, month, year, utilities);
+                const pdfBuffer = await generateTenantReport(tenant, month, year, utilities, { language });
                 
                 // Create safe filename
                 const safeName = tenant.name.replace(/[^a-zA-Z0-9]/g, '');

@@ -64,8 +64,8 @@ export const utilityApi = {
 export const reportApi = {
     getSummary: (month, year, propertyId = 1) => fetch(`${API_BASE}/reports/summary/${month}/${year}?property_id=${propertyId}`).then(r => r.json()),
     
-    downloadPdf: async (tenantId, month, year) => {
-        const response = await fetch(`${API_BASE}/reports/${tenantId}/${month}/${year}`);
+    downloadPdf: async (tenantId, month, year, language = 'sl') => {
+        const response = await fetch(`${API_BASE}/reports/${tenantId}/${month}/${year}?lang=${language}`);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
@@ -81,7 +81,7 @@ export const reportApi = {
         window.URL.revokeObjectURL(url);
     },
 
-    batchExport: async (tenantIds, month, year, progressCallback) => {
+    batchExport: async (tenantIds, month, year, language = 'sl', progressCallback) => {
         try {
             const response = await fetch(`${API_BASE}/reports/batch-export`, {
                 method: 'POST',
@@ -89,7 +89,8 @@ export const reportApi = {
                 body: JSON.stringify({
                     tenantIds,
                     month,
-                    year
+                    year,
+                    language
                 })
             });
 

@@ -8,9 +8,13 @@ import Dashboard from './components/Dashboard';
 import ErrorBoundary, { ReportGeneratorErrorFallback, NetworkErrorFallback } from './components/ErrorBoundary';
 import { ErrorDisplay, useApiErrorHandler } from './hooks/useErrorHandler.jsx';
 import { tenantApi, utilityApi, propertyApi } from './services/api';
+import { LanguageProvider } from './context/LanguageContext';
+import LanguageSelector from './components/LanguageSelector';
+import { useTranslation } from './hooks/useTranslation';
 import './styles.css';
 
-export default function App() {
+function AppContent() {
+    const { t, getMonthNames, getUtilityTypes, formatCurrency } = useTranslation();
     const [properties, setProperties] = useState([]);
     const [selectedProperty, setSelectedProperty] = useState(null);
     const [tenants, setTenants] = useState([]);
@@ -26,6 +30,7 @@ export default function App() {
         year: new Date().getFullYear().toString(),
         utility_type: ''
     });
+    const [isPropertyDropdownOpen, setIsPropertyDropdownOpen] = useState(false);
 
     useEffect(() => {
         console.log('Environment variables:', {
@@ -89,15 +94,15 @@ export default function App() {
             clearMessages();
             if (editing) {
                 await tenantApi.update(editing.id, tenantData);
-                setSuccess('Tenant updated successfully');
+                setSuccess(t('forms.successSaved'));
             } else {
                 await tenantApi.create(tenantData);
-                setSuccess('Tenant created successfully');
+                setSuccess(t('forms.successSaved'));
             }
             setEditing(null);
             loadTenants();
         } catch (err) {
-            setError('Failed to save tenant');
+            setError(t('forms.errorSaving'));
         }
     };
 
@@ -106,15 +111,15 @@ export default function App() {
             clearMessages();
             if (editingUtility) {
                 await utilityApi.update(editingUtility.id, utilityData);
-                setSuccess('Utility cost updated successfully');
+                setSuccess(t('forms.successSaved'));
             } else {
                 await utilityApi.create(utilityData);
-                setSuccess('Utility cost added and allocated successfully');
+                setSuccess(t('forms.successSaved'));
             }
             setEditingUtility(null);
             loadUtilities();
         } catch (err) {
-            setError('Failed to save utility cost');
+            setError(t('forms.errorSaving'));
         }
     };
 
@@ -126,10 +131,10 @@ export default function App() {
         try {
             clearMessages();
             await utilityApi.delete(id);
-            setSuccess('Utility cost deleted successfully');
+            setSuccess(t('forms.successDeleted'));
             loadUtilities();
         } catch (err) {
-            setError('Failed to delete utility cost');
+            setError(t('forms.errorDeleting'));
         }
     };
 
@@ -143,48 +148,81 @@ export default function App() {
         try {
             clearMessages();
             await tenantApi.delete(id);
-            setSuccess('Tenant deleted successfully');
+            setSuccess(t('forms.successDeleted'));
             loadTenants();
         } catch (err) {
-            setError('Failed to delete tenant');
+            setError(t('forms.errorDeleting'));
         }
     };
 
     return (
         <div className="min-h-screen bg-base-200">
-            <div className="navbar bg-base-100 shadow-lg">
-                <div className="navbar-start">
-                    <h1 className="text-xl font-bold">Tenant Manager</h1>
-                </div>
-                <div className="navbar-end">
-                    <div className="dropdown dropdown-end">
-                        <div tabIndex={0} role="button" className="btn btn-ghost">
-                            {selectedProperty ? `${selectedProperty.name}` : 'Select Property'}
-                            <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
+                <div className="navbar bg-base-100 shadow-lg">
+                    <div className="container mx-auto px-4 flex justify-between items-center w-full">
+                        <div className="navbar-start">
+                            <h1 className="text-xl font-bold">{t('common.appTitle', 'Tenant Manager')}</h1>
                         </div>
-                        <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-[1] w-80 p-2 shadow">
-                            {properties.map(property => (
-                                <li key={property.id}>
-                                    <a onClick={() => setSelectedProperty(property)}>
-                                        <div>
+                        <div className="navbar-end flex items-center space-x-4">
+                            <LanguageSelector />
+                            <div className="dropdown dropdown-end group">
+                            <div 
+                                tabIndex={0} 
+                                role="button" 
+                                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                onClick={(e) => {
+                                    e.currentTarget.focus();
+                                    setIsPropertyDropdownOpen(true);
+                                }}
+                                onFocus={() => setIsPropertyDropdownOpen(true)}
+                                onBlur={() => setTimeout(() => setIsPropertyDropdownOpen(false), 150)}
+                            >
+                                <span className="text-lg">🏠</span>
+                                <span className="max-w-40 truncate">{selectedProperty ? `${selectedProperty.name}` : t('properties.selectProperty', 'Select Property')}</span>
+                                <svg className={`w-4 h-4 transition-transform ${isPropertyDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                            <ul tabIndex={0} className="dropdown-content menu bg-white border border-gray-300 rounded-md shadow-lg z-[1] w-80 p-1">
+                                {properties.map(property => (
+                                    <li key={property.id}>
+                                        <button
+                                            onClick={() => {
+                                                setSelectedProperty(property);
+                                                setIsPropertyDropdownOpen(false);
+                                            }}
+                                            className={`flex flex-col items-start w-full px-4 py-3 text-sm text-left hover:bg-gray-100 rounded-md ${
+                                                selectedProperty?.id === property.id
+                                                    ? 'bg-blue-50 text-blue-700'
+                                                    : 'text-gray-700'
+                                            }`}
+                                        >
                                             <div className="font-semibold">{property.name}</div>
-                                            <div className="text-sm opacity-70">{property.address}</div>
-                                        </div>
-                                    </a>
+                                            <div className="text-xs text-gray-500 mt-1">{property.address}</div>
+                                            {selectedProperty?.id === property.id && (
+                                                <svg className="w-4 h-4 ml-auto text-blue-600 absolute right-2 top-1/2 transform -translate-y-1/2" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                </svg>
+                                            )}
+                                        </button>
+                                    </li>
+                                ))}
+                                <div className="border-t border-gray-200 my-1"></div>
+                                <li>
+                                    <button
+                                        onClick={() => {
+                                            setActiveTab('properties');
+                                            setIsPropertyDropdownOpen(false);
+                                        }}
+                                        className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
+                                    >
+                                        {t('properties.title')}
+                                    </button>
                                 </li>
-                            ))}
-                            <div className="divider my-1"></div>
-                            <li>
-                                <a onClick={() => setActiveTab('properties')} className="btn btn-sm btn-primary">
-                                    Manage Properties
-                                </a>
-                            </li>
-                        </ul>
+                            </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
             <div className="container mx-auto px-4 py-6">
                 {/* Global API Error Display */}
@@ -220,38 +258,111 @@ export default function App() {
                     </div>
                 )}
                 
-                <div className="tabs tabs-boxed mb-6">
-                    <div className="tooltip" data-tip="Overview of all properties">
-                        <a 
-                            className={`tab ${activeTab === 'dashboard' ? 'tab-active' : ''}`}
+                <div className="flex space-x-4 mb-6" style={{marginLeft: 0, paddingLeft: 0}}>
+                    <div className="tooltip" data-tip={t('dashboard.title')}>
+                        <button 
+                            className={`flex items-center space-x-2 text-sm font-medium rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                activeTab === 'dashboard' 
+                                    ? 'bg-white shadow-sm' 
+                                    : 'bg-white text-gray-700'
+                            }`}
+                            style={{
+                                padding: '10px 14px',
+                                border: activeTab === 'dashboard' 
+                                    ? '3px solid oklch(45% 0.24 277.023)' 
+                                    : '3px solid #d1d5db',
+                                color: activeTab === 'dashboard' 
+                                    ? 'oklch(45% 0.24 277.023)' 
+                                    : undefined
+                            }}
                             onClick={() => setActiveTab('dashboard')}
                         >
-                            Dashboard
-                        </a>
+                            <span>{t('navigation.dashboard')}</span>
+                        </button>
                     </div>
-                    <div className="tooltip" data-tip={!selectedProperty ? "Select a property first" : "Manage tenants"}>
-                        <a 
-                            className={`tab ${activeTab === 'tenants' ? 'tab-active' : ''} ${!selectedProperty ? 'tab-disabled' : ''}`}
+                    <div className="tooltip" data-tip={!selectedProperty ? t('forms.selectProperty') : t('tenants.title')}>
+                        <button 
+                            className={`flex items-center space-x-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                !selectedProperty 
+                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                    : activeTab === 'tenants'
+                                        ? 'bg-white shadow-sm'
+                                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                            }`}
+                            style={{
+                                padding: '10px 14px',
+                                border: !selectedProperty 
+                                    ? '3px solid #d1d5db'
+                                    : activeTab === 'tenants'
+                                        ? '3px solid oklch(65% 0.241 354.308)'
+                                        : '3px solid #d1d5db',
+                                color: !selectedProperty 
+                                    ? undefined
+                                    : activeTab === 'tenants'
+                                        ? 'oklch(65% 0.241 354.308)'
+                                        : undefined
+                            }}
                             onClick={() => selectedProperty && setActiveTab('tenants')}
+                            disabled={!selectedProperty}
                         >
-                            Tenants
-                        </a>
+                            <span>{t('navigation.tenants')}</span>
+                        </button>
                     </div>
-                    <div className="tooltip" data-tip={!selectedProperty ? "Select a property first" : "Manage utility costs"}>
-                        <a 
-                            className={`tab ${activeTab === 'utilities' ? 'tab-active' : ''} ${!selectedProperty ? 'tab-disabled' : ''}`}
+                    <div className="tooltip" data-tip={!selectedProperty ? t('forms.selectProperty') : t('utilities.title')}>
+                        <button 
+                            className={`flex items-center space-x-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                !selectedProperty 
+                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                    : activeTab === 'utilities'
+                                        ? 'bg-white shadow-sm'
+                                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                            }`}
+                            style={{
+                                padding: '10px 14px',
+                                border: !selectedProperty 
+                                    ? '3px solid #d1d5db'
+                                    : activeTab === 'utilities'
+                                        ? '3px solid oklch(77% 0.152 181.912)'
+                                        : '3px solid #d1d5db',
+                                color: !selectedProperty 
+                                    ? undefined
+                                    : activeTab === 'utilities'
+                                        ? 'oklch(77% 0.152 181.912)'
+                                        : undefined
+                            }}
                             onClick={() => selectedProperty && setActiveTab('utilities')}
+                            disabled={!selectedProperty}
                         >
-                            Utilities
-                        </a>
+                            <span>{t('navigation.utilities')}</span>
+                        </button>
                     </div>
-                    <div className="tooltip" data-tip={!selectedProperty ? "Select a property first" : "Generate monthly reports"}>
-                        <a 
-                            className={`tab ${activeTab === 'reports' ? 'tab-active' : ''} ${!selectedProperty ? 'tab-disabled' : ''}`}
+                    <div className="tooltip" data-tip={!selectedProperty ? t('forms.selectProperty') : t('reports.title')}>
+                        <button 
+                            className={`flex items-center space-x-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                !selectedProperty 
+                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                    : activeTab === 'reports'
+                                        ? 'bg-white shadow-sm'
+                                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                            }`}
+                            style={{
+                                padding: '10px 14px',
+                                border: !selectedProperty 
+                                    ? '3px solid #d1d5db'
+                                    : activeTab === 'reports'
+                                        ? '3px solid oklch(76% 0.177 163.223)'
+                                        : '3px solid #d1d5db',
+                                color: !selectedProperty 
+                                    ? undefined
+                                    : activeTab === 'reports'
+                                        ? 'oklch(76% 0.177 163.223)'
+                                        : undefined
+                            }}
                             onClick={() => selectedProperty && setActiveTab('reports')}
+                            disabled={!selectedProperty}
                         >
-                            Reports
-                        </a>
+                            <span>{t('navigation.reports')}</span>
+                        </button>
                     </div>
                 </div>
             
@@ -268,7 +379,7 @@ export default function App() {
                 <>
                     <UtilityForm onSubmit={handleUtilitySubmit} initialData={editingUtility} onCancel={() => setEditingUtility(null)} selectedProperty={selectedProperty} />
                     <div>
-                        <h2 className="text-2xl font-bold mb-4">Utility Entries</h2>
+                        <h2 className="text-2xl font-bold mb-4">{t('utilities.title')}</h2>
                         
                         {/* Filter Controls */}
                         <div className="card bg-base-100 shadow-md mb-4">
@@ -280,10 +391,10 @@ export default function App() {
                                             onChange={(e) => setUtilityFilter({...utilityFilter, month: e.target.value})}
                                             className="select select-bordered w-full"
                                         >
-                                            <option value="">All Months</option>
-                                            {[...Array(12)].map((_, i) => (
+                                            <option value="">{t('reports.allMonths')}</option>
+                                            {getMonthNames().map((monthName, i) => (
                                                 <option key={i + 1} value={i + 1}>
-                                                    {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                                                    {monthName}
                                                 </option>
                                             ))}
                                         </select>
@@ -294,14 +405,10 @@ export default function App() {
                                             onChange={(e) => setUtilityFilter({...utilityFilter, utility_type: e.target.value})}
                                             className="select select-bordered w-full"
                                         >
-                                            <option value="">All Utility Types</option>
-                                            <option value="Elektrika">Elektrika</option>
-                                            <option value="Voda">Voda</option>
-                                            <option value="Ogrevanje">Ogrevanje</option>
-                                            <option value="Internet">Internet</option>
-                                            <option value="TV + RTV prispevek">TV + RTV prispevek</option>
-                                            <option value="Snaga">Snaga</option>
-                                            <option value="Ostalo">Ostalo</option>
+                                            <option value="">{t('utilities.allUtilityTypes')}</option>
+                                            {getUtilityTypes().map(({ key, label }) => (
+                                                <option key={key} value={key}>{label}</option>
+                                            ))}
                                         </select>
                                     </div>
                                     <div className="form-control w-full">
@@ -310,7 +417,7 @@ export default function App() {
                                             onChange={(e) => setUtilityFilter({...utilityFilter, year: e.target.value})}
                                             className="select select-bordered w-full"
                                         >
-                                            <option value="">All Years</option>
+                                            <option value="">{t('reports.allYears')}</option>
                                             {Array.from({ length: 26 }, (_, i) => 2025 + i)
                                                 .sort((a, b) => b - a)
                                                 .map(year => (
@@ -324,7 +431,7 @@ export default function App() {
                                             className="btn btn-outline"
                                             onClick={() => setUtilityFilter({month: '', year: '', utility_type: ''})}
                                         >
-                                            Clear Filters
+                                            {t('utilities.clearFilters')}
                                         </button>
                                     </div>
                                 </div>
@@ -334,7 +441,7 @@ export default function App() {
                         {utilities.length === 0 ? (
                             <div className="card bg-base-100 shadow-xl">
                                 <div className="card-body">
-                                    <p>No utility entries yet. Add your first utility cost above.</p>
+                                    <p>{t('utilities.noUtilityEntries')}</p>
                                 </div>
                             </div>
                         ) : (() => {
@@ -348,9 +455,9 @@ export default function App() {
                             return filteredUtilities.length === 0 ? (
                                 <div className="card bg-base-100 shadow-xl">
                                     <div className="card-body">
-                                        <p>No utility entries found for the selected period.</p>
+                                        <p>{t('utilities.noUtilityEntriesFiltered')}</p>
                                         <p className="text-sm opacity-70 mt-2">
-                                            Try adjusting your month/year filters or clear all filters to see all entries.
+                                            {t('utilities.adjustFilters')}
                                         </p>
                                     </div>
                                 </div>
@@ -361,16 +468,16 @@ export default function App() {
                                         <div className="card-body">
                                             <h3 className="card-title">{utility.utility_type}</h3>
                                             <div className="space-y-2">
-                                                <p><span className="font-semibold">Period:</span> {utility.month}/{utility.year}</p>
-                                                <p><span className="font-semibold">Total Amount:</span> €{utility.total_amount}</p>
-                                                <p><span className="font-semibold">Allocation:</span> {utility.allocation_method.replace('_', ' ')}</p>
+                                                <p><span className="font-semibold">{t('utilities.period')}</span> {utility.month}/{utility.year}</p>
+                                                <p><span className="font-semibold">{t('utilities.totalAmountLabel')}</span> {formatCurrency(utility.total_amount)}</p>
+                                                <p><span className="font-semibold">{t('utilities.allocationLabel')}</span> {utility.allocation_method.replace('_', ' ')}</p>
                                             </div>
                                             <div className="card-actions justify-end mt-4">
-                                                <div className="tooltip" data-tip="Edit this utility entry">
-                                                    <button className="btn btn-sm btn-outline" onClick={() => handleUtilityEdit(utility)}>Edit</button>
+                                                <div className="tooltip" data-tip={t('utilities.editUtilityTooltip')}>
+                                                    <button className="btn btn-sm btn-outline" onClick={() => handleUtilityEdit(utility)}>{t('common.edit')}</button>
                                                 </div>
-                                                <div className="tooltip" data-tip="Delete this utility entry">
-                                                    <button className="btn btn-sm btn-error" onClick={() => handleUtilityDelete(utility.id)}>Delete</button>
+                                                <div className="tooltip" data-tip={t('utilities.deleteUtilityTooltip')}>
+                                                    <button className="btn btn-sm btn-error" onClick={() => handleUtilityDelete(utility.id)}>{t('common.delete')}</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -401,5 +508,13 @@ export default function App() {
             )}
             </div>
         </div>
+    );
+}
+
+export default function App() {
+    return (
+        <LanguageProvider>
+            <AppContent />
+        </LanguageProvider>
     );
 }

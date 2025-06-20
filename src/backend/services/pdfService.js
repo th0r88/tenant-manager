@@ -1,6 +1,8 @@
 import PDFDocument from 'pdfkit';
 import { calculateProportionalRent, getOccupancyPeriodDescription } from './proportionalCalculationService.js';
 import { PDF_STYLES, PDF_UTILS } from './pdfStyles.js';
+import { t, getMonthName, translateUtilityType } from './translationService.js';
+import { formatCurrency, formatDate, normalizeLanguage } from '../utils/formatters.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -9,7 +11,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export async function generateTenantReport(tenant, month, year, utilities, options = {}) {
-    const { streaming = false, progressCallback = null } = options;
+    const { streaming = false, progressCallback = null, language = 'sl' } = options;
+    const lang = normalizeLanguage(language);
     
     return new Promise(async (resolve, reject) => {
         try {
@@ -64,7 +67,7 @@ export async function generateTenantReport(tenant, month, year, utilities, optio
             });
             
             // Simple Header
-            let currentY = drawHeader(doc, tenant, month, year);
+            let currentY = drawHeader(doc, tenant, month, year, lang);
             
             // Calculate proportional rent details
             if (progressCallback) progressCallback('calculating_rent', { tenantId: tenant.id });
@@ -75,10 +78,8 @@ export async function generateTenantReport(tenant, month, year, utilities, optio
             
             // Billing Details Section (single page)
             if (progressCallback) progressCallback('drawing_billing', { tenantId: tenant.id });
-            currentY = drawBillingSection(doc, currentY, rentCalculation, utilities, month);
+            currentY = drawBillingSection(doc, currentY, rentCalculation, utilities, month, lang);
             
-            // Simple footer
-            drawFooter(doc);
             
             doc.end();
         } catch (error) {
@@ -88,7 +89,7 @@ export async function generateTenantReport(tenant, month, year, utilities, optio
 }
 
 // Simple header with essential information only
-function drawHeader(doc, tenant, month, year) {
+function drawHeader(doc, tenant, month, year, language = 'sl') {
     const pageMargin = PDF_STYLES.spacing.pageMargin;
     let currentY = pageMargin;
     
@@ -101,27 +102,24 @@ function drawHeader(doc, tenant, month, year) {
     });
     currentY += 20;
     
-    // Statement date in DD. MM. YYYY format (no leading zero for month)
+    // Statement date with localized formatting
     const today = new Date();
-    const day = today.getDate().toString().padStart(2, '0');
-    const currentMonth = (today.getMonth() + 1).toString(); // No leading zero for month
-    const currentYear = today.getFullYear();
-    const formattedDate = `${day}. ${currentMonth}. ${currentYear}`;
-    PDF_UTILS.addStyledText(doc, `Statement Date: ${formattedDate}`, pageMargin, currentY, {
+    const formattedDate = formatDate(today, language);
+    PDF_UTILS.addStyledText(doc, `${t(language, 'pdf.statementDate')}: ${formattedDate}`, pageMargin, currentY, {
         fontSize: PDF_STYLES.fontSize.body,
         color: PDF_STYLES.colors.text
     });
     currentY += 15;
     
     // Billing period
-    PDF_UTILS.addStyledText(doc, `Billing Period: ${month}/${year}`, pageMargin, currentY, {
+    PDF_UTILS.addStyledText(doc, `${t(language, 'pdf.billingPeriod')}: ${month}/${year}`, pageMargin, currentY, {
         fontSize: PDF_STYLES.fontSize.body,
         color: PDF_STYLES.colors.text
     });
     currentY += 15;
     
     // Tenant full name
-    PDF_UTILS.addStyledText(doc, `Tenant: ${tenant.name} ${tenant.surname}`, pageMargin, currentY, {
+    PDF_UTILS.addStyledText(doc, `${t(language, 'pdf.tenant')}: ${tenant.name} ${tenant.surname}`, pageMargin, currentY, {
         fontSize: PDF_STYLES.fontSize.body,
         color: PDF_STYLES.colors.text
     });
@@ -132,19 +130,19 @@ function drawHeader(doc, tenant, month, year) {
 
 
 // Simple billing section (single page optimized)
-function drawBillingSection(doc, startY, rentCalculation, utilities, month) {
+function drawBillingSection(doc, startY, rentCalculation, utilities, month, language = 'sl') {
     const { pageMargin, section } = PDF_STYLES.spacing;
     const { subheading } = PDF_STYLES.fontSize;
     
     let currentY = startY;
     
     // Enhanced section header
-    currentY = PDF_UTILS.drawSectionHeader(doc, pageMargin, currentY, 'CHARGES BREAKDOWN') - PDF_STYLES.spacing.section;
+    currentY = PDF_UTILS.drawSectionHeader(doc, pageMargin, currentY, t(language, 'pdf.chargesBreakdown')) - PDF_STYLES.spacing.section;
     
     currentY = PDF_UTILS.getNextY(currentY, section);
     
     // Monthly rent section header
-    PDF_UTILS.addStyledText(doc, 'MONTHLY RENT', pageMargin, currentY, {
+    PDF_UTILS.addStyledText(doc, t(language, 'pdf.monthlyRent'), pageMargin, currentY, {
         fontSize: PDF_STYLES.fontSize.bodyLarge,
         color: PDF_STYLES.colors.primary,
         font: PDF_STYLES.fonts.secondary
@@ -156,16 +154,15 @@ function drawBillingSection(doc, startY, rentCalculation, utilities, month) {
     const rentAmount = rentCalculation.isFullMonth ? rentCalculation.monthlyRent : rentCalculation.proRatedAmount;
     
     const rentColumns = [
-        { header: 'Monthly Rent', key: 'description', width: 200 },
-        { header: 'Amount', key: 'amount', width: 120, align: 'right', bold: true }
+        { header: t(language, 'pdf.monthlyRent'), key: 'description', width: 200 },
+        { header: t(language, 'pdf.amount'), key: 'amount', width: 120, align: 'right', bold: true }
     ];
     
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const currentMonth = monthNames[month - 1];
+    const currentMonth = getMonthName(month - 1, language);
     
     const rentData = [{
         description: currentMonth,
-        amount: `${rentAmount.toFixed(2)}€`
+        amount: formatCurrency(rentAmount, language)
     }];
     
     currentY = PDF_UTILS.drawTable(doc, pageMargin, currentY, rentColumns, rentData, {
@@ -179,23 +176,23 @@ function drawBillingSection(doc, startY, rentCalculation, utilities, month) {
     
     // Simple utilities table (single page)
     if (utilities.length > 0) {
-        currentY = drawUtilitiesTableWithPaging(doc, currentY, utilities);
+        currentY = drawUtilitiesTableWithPaging(doc, currentY, utilities, language);
     }
     
     // Simple total amount
-    currentY = drawSimpleTotal(doc, currentY, rentCalculation, utilities);
+    currentY = drawSimpleTotal(doc, currentY, rentCalculation, utilities, language);
     
     return currentY;
 }
 
 // Simple utilities table (single page optimized)
-function drawUtilitiesTableWithPaging(doc, startY, utilities) {
+function drawUtilitiesTableWithPaging(doc, startY, utilities, language = 'sl') {
     const { pageMargin, section } = PDF_STYLES.spacing;
     
     let currentY = startY;
     
     // Simple utilities section header
-    PDF_UTILS.addStyledText(doc, 'UTILITY CHARGES', pageMargin, currentY, {
+    PDF_UTILS.addStyledText(doc, t(language, 'pdf.utilityCharges'), pageMargin, currentY, {
         fontSize: PDF_STYLES.fontSize.bodyLarge,
         color: PDF_STYLES.colors.primary,
         font: PDF_STYLES.fonts.secondary
@@ -205,9 +202,9 @@ function drawUtilitiesTableWithPaging(doc, startY, utilities) {
     
     // 3-column table with total and tenant share
     const columns = [
-        { header: 'Utility Type', key: 'utility_type', width: 140 },
-        { header: 'Total Amount', key: 'total_amount', width: 90, align: 'right' },
-        { header: 'Your Share', key: 'allocated_amount', width: 90, align: 'right', bold: true }
+        { header: t(language, 'pdf.utilityType'), key: 'utility_type', width: 140 },
+        { header: t(language, 'pdf.totalAmount'), key: 'total_amount', width: 90, align: 'right' },
+        { header: t(language, 'pdf.yourShare'), key: 'allocated_amount', width: 90, align: 'right', bold: true }
     ];
     
     const tableData = utilities.map(utility => {
@@ -215,9 +212,9 @@ function drawUtilitiesTableWithPaging(doc, startY, utilities) {
         const allocatedAmount = parseFloat(utility.allocated_amount) || 0;
         
         return {
-            utility_type: utility.utility_type,
-            total_amount: `${totalAmount.toFixed(2)}€`,
-            allocated_amount: `${allocatedAmount.toFixed(2)}€`
+            utility_type: translateUtilityType(utility.utility_type, language),
+            total_amount: formatCurrency(totalAmount, language),
+            allocated_amount: formatCurrency(allocatedAmount, language)
         };
     });
     
@@ -232,15 +229,15 @@ function drawUtilitiesTableWithPaging(doc, startY, utilities) {
 }
 
 // Helper function to draw utilities table (original, for overflow handling)
-function drawUtilitiesTable(doc, startY, utilities) {
+function drawUtilitiesTable(doc, startY, utilities, language = 'sl') {
     const { pageMargin, section } = PDF_STYLES.spacing;
     
     let currentY = startY;
     
     // Simple 2-column table
     const columns = [
-        { header: 'Utility Type', key: 'utility_type', width: 200 },
-        { header: 'Amount', key: 'allocated_amount', width: 120, align: 'right', bold: true }
+        { header: t(language, 'pdf.utilityType'), key: 'utility_type', width: 200 },
+        { header: t(language, 'pdf.amount'), key: 'allocated_amount', width: 120, align: 'right', bold: true }
     ];
     
     const tableData = utilities.map(utility => {
@@ -263,7 +260,7 @@ function drawUtilitiesTable(doc, startY, utilities) {
 }
 
 // Helper function to draw highlighted summary section
-function drawSimpleTotal(doc, startY, rentCalculation, utilities) {
+function drawSimpleTotal(doc, startY, rentCalculation, utilities, language = 'sl') {
     const { pageMargin, section } = PDF_STYLES.spacing;
     
     let currentY = startY + section;
@@ -274,7 +271,7 @@ function drawSimpleTotal(doc, startY, rentCalculation, utilities) {
     const grandTotal = rentAmount + utilitiesTotal;
     
     // Simple total amount line
-    PDF_UTILS.addStyledText(doc, 'TOTAL AMOUNT DUE:', pageMargin, currentY, {
+    PDF_UTILS.addStyledText(doc, `${t(language, 'pdf.totalAmountDue')}:`, pageMargin, currentY, {
         fontSize: PDF_STYLES.fontSize.heading,
         color: PDF_STYLES.colors.primaryDark,
         font: PDF_STYLES.fonts.secondary
@@ -282,7 +279,7 @@ function drawSimpleTotal(doc, startY, rentCalculation, utilities) {
     
     // Calculate table width (140 + 90 + 90 = 320) and right-align the total
     const tableWidth = 320;
-    const totalAmountText = `${grandTotal.toFixed(2)}€`;
+    const totalAmountText = formatCurrency(grandTotal, language);
     const totalAmountWidth = doc.widthOfString(totalAmountText);
     const totalAmountX = pageMargin + tableWidth - totalAmountWidth;
     
@@ -295,44 +292,4 @@ function drawSimpleTotal(doc, startY, rentCalculation, utilities) {
     return currentY + 30;
 }
 
-// Simple footer with generation info
-function drawFooter(doc) {
-    const footerY = PDF_STYLES.layout.pageHeight - PDF_STYLES.spacing.pageMargin - PDF_STYLES.layout.footerHeight;
-    const { pageMargin } = PDF_STYLES.spacing;
-    const { small, tiny } = PDF_STYLES.fontSize;
-    
-    // Footer background
-    PDF_UTILS.drawCard(doc, pageMargin, footerY, PDF_STYLES.layout.contentWidth, PDF_STYLES.layout.footerHeight, {
-        fillColor: PDF_STYLES.colors.background,
-        borderColor: PDF_STYLES.colors.border
-    });
-    
-    const footerPadding = 10;
-    const leftX = pageMargin + footerPadding;
-    const centerX = pageMargin + PDF_STYLES.layout.contentWidth / 2;
-    const rightX = pageMargin + PDF_STYLES.layout.contentWidth - footerPadding;
-    
-    // Simple generation info
-    const today = new Date();
-    const day = today.getDate().toString().padStart(2, '0');
-    const currentMonth = (today.getMonth() + 1).toString(); // No leading zero for month
-    const currentYear = today.getFullYear();
-    const footerFormattedDate = `${day}. ${currentMonth}. ${currentYear}`;
-    PDF_UTILS.addStyledText(doc, `Generated: ${footerFormattedDate}`, leftX, footerY + footerPadding + 8, {
-        fontSize: tiny,
-        color: PDF_STYLES.colors.textLight
-    });
-    
-    PDF_UTILS.addStyledText(doc, 'Property Management System', rightX - 120, footerY + footerPadding + 8, {
-        fontSize: tiny,
-        color: PDF_STYLES.colors.textLight,
-        align: 'right'
-    });
-    
-    PDF_UTILS.addStyledText(doc, 'Confidential Document', rightX - 80, footerY + footerPadding + 25, {
-        fontSize: tiny,
-        color: PDF_STYLES.colors.textLight,
-        align: 'right'
-    });
-}
 
