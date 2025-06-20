@@ -232,13 +232,14 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text text-right">{t('tenants.form.taxNumberOptional')}</span>
+                                <span className="label-text text-right">{t('tenants.form.taxNumberRequired')}</span>
                             </label>
                             <input 
                                 name="tax_number" 
                                 value={formData.tax_number} 
                                 onChange={handleChange} 
                                 className="input input-bordered w-full" 
+                                required
                             />
                         </div>
                         <div className="form-control w-full">

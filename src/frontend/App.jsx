@@ -158,9 +158,9 @@ function AppContent() {
     return (
         <div className="min-h-screen bg-base-200">
                 <div className="navbar bg-base-100 shadow-lg">
-                    <div className="container mx-auto px-4 flex justify-between items-center w-full">
+                    <div className="container mx-auto px-4 flex justify-between items-center w-full max-w-5xl">
                         <div className="navbar-start">
-                            <h1 className="text-xl font-bold">{t('common.appTitle', 'Tenant Manager')}</h1>
+                            <h1 className="text-3xl font-bold">{t('common.appTitle', 'Tenant Manager')}</h1>
                         </div>
                         <div className="navbar-end flex items-center space-x-4">
                             <LanguageSelector />
@@ -224,7 +224,7 @@ function AppContent() {
                     </div>
                 </div>
 
-            <div className="container mx-auto px-4 py-6">
+            <div className="container mx-auto px-4 py-6 max-w-5xl">
                 {/* Global API Error Display */}
                 <ErrorDisplay 
                     error={apiError} 
@@ -261,7 +261,7 @@ function AppContent() {
                 <div className="flex space-x-4 mb-6" style={{marginLeft: 0, paddingLeft: 0}}>
                     <div className="tooltip" data-tip={t('dashboard.title')}>
                         <button 
-                            className={`flex items-center space-x-2 text-sm font-medium rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            className={`flex items-center space-x-2 text-sm font-medium rounded-md hover:bg-gray-50 focus:outline-none ${
                                 activeTab === 'dashboard' 
                                     ? 'bg-white shadow-sm' 
                                     : 'bg-white text-gray-700'
@@ -282,7 +282,7 @@ function AppContent() {
                     </div>
                     <div className="tooltip" data-tip={!selectedProperty ? t('forms.selectProperty') : t('tenants.title')}>
                         <button 
-                            className={`flex items-center space-x-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            className={`flex items-center space-x-2 text-sm font-medium rounded-md focus:outline-none ${
                                 !selectedProperty 
                                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
                                     : activeTab === 'tenants'
@@ -310,7 +310,7 @@ function AppContent() {
                     </div>
                     <div className="tooltip" data-tip={!selectedProperty ? t('forms.selectProperty') : t('utilities.title')}>
                         <button 
-                            className={`flex items-center space-x-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            className={`flex items-center space-x-2 text-sm font-medium rounded-md focus:outline-none ${
                                 !selectedProperty 
                                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
                                     : activeTab === 'utilities'
@@ -338,7 +338,7 @@ function AppContent() {
                     </div>
                     <div className="tooltip" data-tip={!selectedProperty ? t('forms.selectProperty') : t('reports.title')}>
                         <button 
-                            className={`flex items-center space-x-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            className={`flex items-center space-x-2 text-sm font-medium rounded-md focus:outline-none ${
                                 !selectedProperty 
                                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
                                     : activeTab === 'reports'
@@ -470,7 +470,7 @@ function AppContent() {
                                             <div className="space-y-2">
                                                 <p><span className="font-semibold">{t('utilities.period')}</span> {utility.month}/{utility.year}</p>
                                                 <p><span className="font-semibold">{t('utilities.totalAmountLabel')}</span> {formatCurrency(utility.total_amount)}</p>
-                                                <p><span className="font-semibold">{t('utilities.allocationLabel')}</span> {utility.allocation_method.replace('_', ' ')}</p>
+                                                <p><span className="font-semibold">{t('utilities.allocationLabel')}</span> {utility.allocation_method === 'per_person' ? t('utilities.perPerson') : (utility.allocation_method === 'per_square_meter' || utility.allocation_method === 'per_sqm') ? 'po m²' : utility.allocation_method}</p>
                                             </div>
                                             <div className="card-actions justify-end mt-4">
                                                 <div className="tooltip" data-tip={t('utilities.editUtilityTooltip')}>

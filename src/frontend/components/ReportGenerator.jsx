@@ -242,11 +242,11 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                     </div>
                                 </div>
 
-                                <div className="overflow-x-auto">
-                                    <table className="table table-zebra">
+                                <div className="overflow-hidden">
+                                    <table className="table table-zebra w-full">
                                         <thead>
                                             <tr>
-                                                <th>
+                                                <th className="w-12">
                                                     <input 
                                                         type="checkbox" 
                                                         className="checkbox checkbox-primary checkbox-sm" 
@@ -254,17 +254,17 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                                         onChange={() => handleSelectAll(filteredSummary)}
                                                     />
                                                 </th>
-                                                <th>{t('reports.tenant')}</th>
-                                                <th>{t('reports.rent')}</th>
-                                                <th>{t('reports.utilitiesLabel')}</th>
-                                                <th>{t('reports.totalDue')}</th>
-                                                <th>{t('reports.actions')}</th>
+                                                <th className="w-1/4 min-w-0">{t('reports.tenant')}</th>
+                                                <th className="w-1/5">{t('reports.rent')}</th>
+                                                <th className="w-1/5">{t('reports.utilitiesLabel')}</th>
+                                                <th className="w-1/5">{t('reports.totalDue')}</th>
+                                                <th className="w-1/6">{t('reports.actions')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {filteredSummary.map((tenant) => (
                                             <tr key={tenant.id}>
-                                                <td>
+                                                <td className="w-12">
                                                     <input 
                                                         type="checkbox" 
                                                         className="checkbox checkbox-primary checkbox-sm" 
@@ -272,19 +272,19 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                                         onChange={(e) => handleTenantSelection(tenant.id, e.target.checked)}
                                                     />
                                                 </td>
-                                                <td>
-                                                    <div className="font-bold">{tenant.name} {tenant.surname}</div>
+                                                <td className="w-1/4 min-w-0">
+                                                    <div className="font-bold truncate">{tenant.name} {tenant.surname}</div>
                                                 </td>
-                                                <td>
+                                                <td className="w-1/5">
                                                     <div className="font-medium">{formatCurrency(tenant.rent_amount)}</div>
                                                 </td>
-                                                <td>
+                                                <td className="w-1/5">
                                                     <div className="font-medium">{formatCurrency(tenant.utilities_total)}</div>
                                                 </td>
-                                                <td>
+                                                <td className="w-1/5">
                                                     <div className="font-bold text-primary">{formatCurrency(tenant.total_due)}</div>
                                                 </td>
-                                                <td>
+                                                <td className="w-1/6">
                                                     <DownloadButton 
                                                         onDownload={() => handleDownloadPdf(tenant.id)}
                                                         isLoading={downloadingPdfs.has(tenant.id)}

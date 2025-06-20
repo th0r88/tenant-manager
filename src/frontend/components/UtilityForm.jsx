@@ -130,7 +130,7 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                                 required
                             >
                                 <option value="per_person">{t('utilities.perPerson')}</option>
-                                <option value="per_sqm">{t('utilities.perSquareMeter')}</option>
+                                <option value="per_square_meter">{t('utilities.perSquareMeter')}</option>
                             </select>
                         </div>
                     </div>

@@ -4,6 +4,7 @@ import { useTranslation } from '../hooks/useTranslation';
 export default function TenantList({ tenants, onEdit, onDelete }) {
     const { t, formatCurrency, formatDate } = useTranslation();
     const [deleteModal, setDeleteModal] = useState(null);
+    const [viewModal, setViewModal] = useState(null);
     return (
         <div>
             <h2 className="text-2xl font-bold mb-4">{t('tenants.title')} ({tenants.length})</h2>
@@ -17,17 +18,13 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                 <>
                     {/* Desktop Table */}
                     <div className="hidden lg:block overflow-x-auto">
-                        <table className="table table-zebra table-fixed">
+                        <table className="table table-zebra w-full">
                             <thead>
                                 <tr>
                                     <th>{t('common.name')}</th>
-                                    <th className="w-32">{t('common.address')}</th>
-                                    <th>{t('tenants.emso')}</th>
-                                    <th>{t('tenants.taxNumber')}</th>
-                                    <th className="w-20">{t('common.rent')}</th>
-                                    <th className="w-16">{t('common.area')}</th>
-                                    <th className="w-20">{t('tenants.occupancy')}</th>
-                                    <th>{t('common.actions')}</th>
+                                    <th>{t('common.rent')}</th>
+                                    <th>{t('tenants.occupancy')}</th>
+                                    <th style={{ paddingLeft: '3.3rem' }}>{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -36,20 +33,10 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                         <td>
                                             <div className="font-bold">{tenant.name} {tenant.surname}</div>
                                         </td>
-                                        <td className="w-32">
-                                            <div className="tooltip" data-tip={tenant.address}>
-                                                <div className="truncate max-w-28 cursor-help">
-                                                    {tenant.address}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>{tenant.emso}</td>
-                                        <td>{tenant.tax_number || t('common.none')}</td>
-                                        <td className="w-20">
+                                        <td>
                                             <div className="font-bold text-success text-sm">{formatCurrency(tenant.rent_amount)}{t('dashboard.perMonth')}</div>
                                         </td>
-                                        <td className="w-16 text-center">{tenant.room_area}m²</td>
-                                        <td className="w-20">
+                                        <td>
                                             <div className="text-center">
                                                 <div className={`badge badge-sm ${
                                                     tenant.occupancy_status === 'active' ? 'badge-success' :
@@ -63,24 +50,26 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td>
-                                            <div className="flex gap-2">
-                                                <div className="tooltip" data-tip={t('tenants.editTenantDetails')}>
-                                                    <button 
-                                                        className="btn btn-sm btn-outline" 
-                                                        onClick={() => onEdit(tenant)}
-                                                    >
-                                                        {t('common.edit')}
-                                                    </button>
-                                                </div>
-                                                <div className="tooltip" data-tip={t('tenants.deleteTenantTooltip')}>
-                                                    <button 
-                                                        className="btn btn-sm btn-error" 
-                                                        onClick={() => setDeleteModal(tenant)}
-                                                    >
-                                                        {t('common.delete')}
-                                                    </button>
-                                                </div>
+                                        <td className="text-right">
+                                            <div className="flex gap-2 justify-end">
+                                                <button 
+                                                    className="btn btn-sm btn-info" 
+                                                    onClick={() => setViewModal(tenant)}
+                                                >
+                                                    {t('common.view')}
+                                                </button>
+                                                <button 
+                                                    className="btn btn-sm btn-outline" 
+                                                    onClick={() => onEdit(tenant)}
+                                                >
+                                                    {t('common.edit')}
+                                                </button>
+                                                <button 
+                                                    className="btn btn-sm btn-error" 
+                                                    onClick={() => setDeleteModal(tenant)}
+                                                >
+                                                    {t('common.delete')}
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -148,6 +137,12 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                     
                                     <div className="flex gap-2 mt-4">
                                         <button 
+                                            className="btn btn-sm btn-info flex-1" 
+                                            onClick={() => setViewModal(tenant)}
+                                        >
+                                            {t('common.view')}
+                                        </button>
+                                        <button 
                                             className="btn btn-sm btn-outline flex-1" 
                                             onClick={() => onEdit(tenant)}
                                         >
@@ -165,6 +160,94 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                         ))}
                     </div>
                 </>
+            )}
+            
+            {/* View Tenant Modal */}
+            {viewModal && (
+                <div className="modal modal-open">
+                    <div className="modal-box w-11/12 max-w-2xl">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-bold text-lg">{t('tenants.tenantDetails')}</h3>
+                            <button 
+                                className="btn btn-sm btn-circle" 
+                                onClick={() => setViewModal(null)}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-sm font-medium opacity-70">{t('common.name')}</label>
+                                    <div className="text-lg font-bold">{viewModal.name} {viewModal.surname}</div>
+                                </div>
+                                
+                                <div>
+                                    <label className="text-sm font-medium opacity-70">{t('common.address')}</label>
+                                    <div>{viewModal.address}</div>
+                                </div>
+                                
+                                <div>
+                                    <label className="text-sm font-medium opacity-70">{t('tenants.emso')}</label>
+                                    <div className="font-mono">{viewModal.emso}</div>
+                                </div>
+                                
+                                <div>
+                                    <label className="text-sm font-medium opacity-70">{t('tenants.taxNumber')}</label>
+                                    <div className="font-mono">{viewModal.tax_number || t('common.none')}</div>
+                                </div>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-sm font-medium opacity-70">{t('tenants.rentAmount')}</label>
+                                    <div className="text-lg font-bold text-success">{formatCurrency(viewModal.rent_amount)}{t('dashboard.perMonth')}</div>
+                                </div>
+                                
+                                <div>
+                                    <label className="text-sm font-medium opacity-70">{t('tenants.roomArea')}</label>
+                                    <div>{viewModal.room_area}m²</div>
+                                </div>
+                                
+                                <div>
+                                    <label className="text-sm font-medium opacity-70">{t('tenants.lease')}</label>
+                                    <div>{viewModal.lease_duration} {t('tenants.months')}</div>
+                                </div>
+                                
+                                <div>
+                                    <label className="text-sm font-medium opacity-70">{t('tenants.occupancy')}</label>
+                                    <div className="flex items-center gap-2">
+                                        <div className={`badge badge-sm ${
+                                            viewModal.occupancy_status === 'active' ? 'badge-success' :
+                                            viewModal.occupancy_status === 'pending' ? 'badge-warning' : 'badge-error'
+                                        }`}>
+                                            {t(`tenants.occupancyStatuses.${viewModal.occupancy_status}`)}
+                                        </div>
+                                    </div>
+                                    <div className="text-xs mt-1 opacity-70">
+                                        <div><span className="font-medium">{t('tenants.moveIn')}:</span> {viewModal.move_in_date ? formatDate(new Date(viewModal.move_in_date)) : t('common.none')}</div>
+                                        {viewModal.move_out_date && (
+                                            <div><span className="font-medium">{t('tenants.moveOut')}:</span> {formatDate(new Date(viewModal.move_out_date))}</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="modal-action">
+                            <button 
+                                className="btn btn-outline" 
+                                onClick={() => {
+                                    setViewModal(null);
+                                    onEdit(viewModal);
+                                }}
+                            >
+                                {t('common.edit')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
             
             {/* Delete Confirmation Modal */}
