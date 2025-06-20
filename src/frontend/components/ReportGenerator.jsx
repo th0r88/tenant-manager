@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { reportApi } from '../services/api';
 import DownloadButton from './DownloadButton';
 import BatchExportModal from './BatchExportModal';
+import { useTranslation } from '../hooks/useTranslation';
 
 export default function ReportGenerator({ selectedProperty, tenants }) {
+    const { t, formatCurrency, getMonthNames, currentLanguage } = useTranslation();
     const [month, setMonth] = useState(new Date().getMonth() + 1);
     const [year, setYear] = useState(new Date().getFullYear());
     const [summary, setSummary] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [pdfLanguage, setPdfLanguage] = useState(currentLanguage || 'sl');
     const [reportFilter, setReportFilter] = useState({
         month: new Date().getMonth() + 1,
         year: new Date().getFullYear(),
@@ -39,7 +42,7 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
     const handleDownloadPdf = async (tenantId) => {
         setDownloadingPdfs(prev => new Set(prev).add(tenantId));
         try {
-            await reportApi.downloadPdf(tenantId, month, year);
+            await reportApi.downloadPdf(tenantId, month, year, pdfLanguage);
         } catch (error) {
             console.error('PDF download failed:', error);
         } finally {
@@ -73,31 +76,31 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Monthly Reports</h2>
+            <h2 className="text-2xl font-bold">{t('reports.monthlyReportsTitle')}</h2>
             
             <div className="card bg-base-100 shadow-xl">
                 <div className="card-body">
-                    <h3 className="card-title">Select Period</h3>
-                    <div className="flex gap-2 w-1/2">
+                    <h3 className="card-title">{t('reports.selectPeriod')}</h3>
+                    <div className="flex gap-2 w-full">
                         <div className="form-control flex-1">
                             <label className="label">
-                                <span className="label-text">Month</span>
+                                <span className="label-text">{t('reports.month')}</span>
                             </label>
                             <select 
                                 className="select select-bordered w-full" 
                                 value={month} 
                                 onChange={(e) => setMonth(parseInt(e.target.value))}
                             >
-                                {[...Array(12)].map((_, i) => (
+                                {getMonthNames().map((monthName, i) => (
                                     <option key={i + 1} value={i + 1}>
-                                        {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                                        {monthName}
                                     </option>
                                 ))}
                             </select>
                         </div>
                         <div className="form-control flex-1">
                             <label className="label">
-                                <span className="label-text">Year</span>
+                                <span className="label-text">{t('reports.year')}</span>
                             </label>
                             <select 
                                 className="select select-bordered w-full"
@@ -109,13 +112,26 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                 ))}
                             </select>
                         </div>
+                        <div className="form-control flex-1">
+                            <label className="label">
+                                <span className="label-text">{t('reports.pdfLanguage')}</span>
+                            </label>
+                            <select 
+                                className="select select-bordered w-full"
+                                value={pdfLanguage} 
+                                onChange={(e) => setPdfLanguage(e.target.value)}
+                            >
+                                <option value="sl">🇸🇮 {t('language.slovenian')}</option>
+                                <option value="en">🇬🇧 {t('language.english')}</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
             
             <div className="card bg-base-100 shadow-xl">
                 <div className="card-body">
-                    <h3 className="card-title">Report Summary</h3>
+                    <h3 className="card-title">{t('reports.reportSummaryTitle')}</h3>
                     
                     {/* Filter Controls */}
                     <div className="card bg-base-100 shadow-md mb-4">
@@ -127,10 +143,10 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                         onChange={(e) => setReportFilter({...reportFilter, month: parseInt(e.target.value)})}
                                         className="select select-bordered w-full"
                                     >
-                                        <option value="">All Months</option>
-                                        {[...Array(12)].map((_, i) => (
+                                        <option value="">{t('reports.allMonths')}</option>
+                                        {getMonthNames().map((monthName, i) => (
                                             <option key={i + 1} value={i + 1}>
-                                                {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                                                {monthName}
                                             </option>
                                         ))}
                                     </select>
@@ -141,7 +157,7 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                         onChange={(e) => setReportFilter({...reportFilter, year: parseInt(e.target.value)})}
                                         className="select select-bordered w-full"
                                     >
-                                        <option value="">All Years</option>
+                                        <option value="">{t('reports.allYears')}</option>
                                         {Array.from({ length: 26 }, (_, i) => 2025 + i)
                                             .sort((a, b) => b - a)
                                             .map(year => (
@@ -156,7 +172,7 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                         onChange={(e) => setReportFilter({...reportFilter, tenant: e.target.value})}
                                         className="select select-bordered w-full"
                                     >
-                                        <option value="">All Tenants</option>
+                                        <option value="">{t('reports.allTenants')}</option>
                                         {tenants && tenants.map((tenant) => (
                                             <option key={tenant.id} value={tenant.id}>
                                                 {tenant.name} {tenant.surname}
@@ -169,7 +185,7 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                         className="btn btn-outline"
                                         onClick={() => setReportFilter({month: '', year: '', tenant: ''})}
                                     >
-                                        Clear Filters
+                                        {t('reports.clearFilters')}
                                     </button>
                                 </div>
                             </div>
@@ -178,11 +194,11 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                     {loading ? (
                         <div className="flex items-center justify-center py-8">
                             <span className="loading loading-spinner loading-md"></span>
-                            <span className="ml-2">Loading...</span>
+                            <span className="ml-2">{t('reports.loading')}</span>
                         </div>
                     ) : summary.length === 0 ? (
                         <div className="text-center py-8 opacity-50">
-                            <p>No data for this month/year. Make sure you have tenants and utility entries for this period.</p>
+                            <p>{t('reports.noDataForPeriod')}</p>
                         </div>
                     ) : (() => {
                         const filteredSummary = summary.filter(tenant => {
@@ -194,8 +210,8 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
 
                         return filteredSummary.length === 0 ? (
                             <div className="text-center py-8 opacity-50">
-                                <p>No reports found for the selected filters.</p>
-                                <p className="text-sm mt-2">Try adjusting your filters or clear all filters to see all reports.</p>
+                                <p>{t('reports.noReportsForFilters')}</p>
+                                <p className="text-sm mt-2">{t('reports.adjustFiltersHelp')}</p>
                             </div>
                         ) : (
                             <div>
@@ -210,7 +226,7 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                                 onChange={() => handleSelectAll(filteredSummary)}
                                             />
                                             <span className="label-text ml-2">
-                                                Select All ({selectedTenants.size} selected)
+                                                {t('reports.selectAll')} ({selectedTenants.size} {t('reports.selected')})
                                             </span>
                                         </label>
                                     </div>
@@ -220,7 +236,7 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                                 className="btn btn-primary btn-sm"
                                                 onClick={() => setShowBatchModal(true)}
                                             >
-                                                📦 Export {selectedTenants.size} Reports as ZIP
+                                                📦 {t('reports.exportAsZip')} {selectedTenants.size} {t('reports.reportsCount')}
                                             </button>
                                         )}
                                     </div>
@@ -238,11 +254,11 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                                         onChange={() => handleSelectAll(filteredSummary)}
                                                     />
                                                 </th>
-                                                <th>Tenant</th>
-                                                <th>Rent</th>
-                                                <th>Utilities</th>
-                                                <th>Total Due</th>
-                                                <th>Actions</th>
+                                                <th>{t('reports.tenant')}</th>
+                                                <th>{t('reports.rent')}</th>
+                                                <th>{t('reports.utilitiesLabel')}</th>
+                                                <th>{t('reports.totalDue')}</th>
+                                                <th>{t('reports.actions')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -260,13 +276,13 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                                     <div className="font-bold">{tenant.name} {tenant.surname}</div>
                                                 </td>
                                                 <td>
-                                                    <div className="font-medium">€{tenant.rent_amount.toFixed(2)}</div>
+                                                    <div className="font-medium">{formatCurrency(tenant.rent_amount)}</div>
                                                 </td>
                                                 <td>
-                                                    <div className="font-medium">€{tenant.utilities_total.toFixed(2)}</div>
+                                                    <div className="font-medium">{formatCurrency(tenant.utilities_total)}</div>
                                                 </td>
                                                 <td>
-                                                    <div className="font-bold text-primary">€{tenant.total_due.toFixed(2)}</div>
+                                                    <div className="font-bold text-primary">{formatCurrency(tenant.total_due)}</div>
                                                 </td>
                                                 <td>
                                                     <DownloadButton 
@@ -295,6 +311,7 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                     tenants={summary.filter(t => selectedTenants.has(t.id))}
                     month={month}
                     year={year}
+                    pdfLanguage={pdfLanguage}
                 />
             )}
         </div>

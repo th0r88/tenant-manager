@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
+import { useTranslation } from '../hooks/useTranslation';
 
 export default function TenantList({ tenants, onEdit, onDelete }) {
+    const { t, formatCurrency, formatDate } = useTranslation();
     const [deleteModal, setDeleteModal] = useState(null);
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-4">Tenants ({tenants.length})</h2>
+            <h2 className="text-2xl font-bold mb-4">{t('tenants.title')} ({tenants.length})</h2>
             {tenants.length === 0 ? (
                 <div className="card bg-base-100 shadow-xl">
                     <div className="card-body">
-                        <p>No tenants yet. Add your first tenant above.</p>
+                        <p>{t('tenants.noTenantsYet')}</p>
                     </div>
                 </div>
             ) : (
@@ -18,14 +20,14 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                         <table className="table table-zebra table-fixed">
                             <thead>
                                 <tr>
-                                    <th>Name</th>
-                                    <th className="w-32">Address</th>
-                                    <th>EMŠO</th>
-                                    <th>Tax Number</th>
-                                    <th className="w-20">Rent</th>
-                                    <th className="w-16">Area</th>
-                                    <th className="w-20">Occupancy</th>
-                                    <th>Actions</th>
+                                    <th>{t('common.name')}</th>
+                                    <th className="w-32">{t('common.address')}</th>
+                                    <th>{t('tenants.emso')}</th>
+                                    <th>{t('tenants.taxNumber')}</th>
+                                    <th className="w-20">{t('common.rent')}</th>
+                                    <th className="w-16">{t('common.area')}</th>
+                                    <th className="w-20">{t('tenants.occupancy')}</th>
+                                    <th>{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -42,9 +44,9 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                             </div>
                                         </td>
                                         <td>{tenant.emso}</td>
-                                        <td>{tenant.tax_number || '-'}</td>
+                                        <td>{tenant.tax_number || t('common.none')}</td>
                                         <td className="w-20">
-                                            <div className="font-bold text-success text-sm">€{tenant.rent_amount}/mo</div>
+                                            <div className="font-bold text-success text-sm">{formatCurrency(tenant.rent_amount)}{t('dashboard.perMonth')}</div>
                                         </td>
                                         <td className="w-16 text-center">{tenant.room_area}m²</td>
                                         <td className="w-20">
@@ -53,31 +55,30 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                                     tenant.occupancy_status === 'active' ? 'badge-success' :
                                                     tenant.occupancy_status === 'pending' ? 'badge-warning' : 'badge-error'
                                                 }`}>
-                                                    {tenant.occupancy_status === 'active' ? 'Active' :
-                                                     tenant.occupancy_status === 'pending' ? 'Pending' : 'Moved Out'}
+                                                    {t(`tenants.occupancyStatuses.${tenant.occupancy_status}`)}
                                                 </div>
                                                 <div className="text-xs mt-1 opacity-70">
-                                                    {tenant.move_in_date ? new Date(tenant.move_in_date).toLocaleDateString() : 'N/A'}
-                                                    {tenant.move_out_date && ` - ${new Date(tenant.move_out_date).toLocaleDateString()}`}
+                                                    {tenant.move_in_date ? formatDate(new Date(tenant.move_in_date)) : t('common.none')}
+                                                    {tenant.move_out_date && ` - ${formatDate(new Date(tenant.move_out_date))}`}
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
                                             <div className="flex gap-2">
-                                                <div className="tooltip" data-tip="Edit tenant details">
+                                                <div className="tooltip" data-tip={t('tenants.editTenantDetails')}>
                                                     <button 
                                                         className="btn btn-sm btn-outline" 
                                                         onClick={() => onEdit(tenant)}
                                                     >
-                                                        Edit
+                                                        {t('common.edit')}
                                                     </button>
                                                 </div>
-                                                <div className="tooltip" data-tip="Delete tenant">
+                                                <div className="tooltip" data-tip={t('tenants.deleteTenantTooltip')}>
                                                     <button 
                                                         className="btn btn-sm btn-error" 
                                                         onClick={() => setDeleteModal(tenant)}
                                                     >
-                                                        Delete
+                                                        {t('common.delete')}
                                                     </button>
                                                 </div>
                                             </div>
@@ -95,52 +96,51 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                 <div className="card-body p-4">
                                     <div className="flex justify-between items-start mb-3">
                                         <h3 className="font-bold text-lg">{tenant.name} {tenant.surname}</h3>
-                                        <div className="badge badge-success font-bold">€{tenant.rent_amount}/mo</div>
+                                        <div className="badge badge-success font-bold">{formatCurrency(tenant.rent_amount)}{t('dashboard.perMonth')}</div>
                                     </div>
                                     
                                     <div className="space-y-2 text-sm">
                                         <div>
-                                            <span className="font-medium opacity-70">Address:</span>
+                                            <span className="font-medium opacity-70">{t('common.address')}:</span>
                                             <div className="break-words">{tenant.address}</div>
                                         </div>
                                         
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <span className="font-medium opacity-70">EMŠO:</span>
+                                                <span className="font-medium opacity-70">{t('tenants.emso')}:</span>
                                                 <div className="font-mono text-xs">{tenant.emso}</div>
                                             </div>
                                             <div>
-                                                <span className="font-medium opacity-70">Tax:</span>
-                                                <div className="font-mono text-xs">{tenant.tax_number || 'N/A'}</div>
+                                                <span className="font-medium opacity-70">{t('tenants.taxNumber')}:</span>
+                                                <div className="font-mono text-xs">{tenant.tax_number || t('common.none')}</div>
                                             </div>
                                         </div>
                                         
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <span className="font-medium opacity-70">Area:</span>
+                                                <span className="font-medium opacity-70">{t('common.area')}:</span>
                                                 <div>{tenant.room_area}m²</div>
                                             </div>
                                             <div>
-                                                <span className="font-medium opacity-70">Lease:</span>
-                                                <div>{tenant.lease_duration} months</div>
+                                                <span className="font-medium opacity-70">{t('tenants.lease')}:</span>
+                                                <div>{tenant.lease_duration} {t('tenants.months')}</div>
                                             </div>
                                         </div>
                                         
                                         <div className="mt-3">
                                             <div className="flex items-center gap-2 mb-2">
-                                                <span className="font-medium opacity-70">Status:</span>
+                                                <span className="font-medium opacity-70">{t('common.status')}:</span>
                                                 <div className={`badge badge-sm ${
                                                     tenant.occupancy_status === 'active' ? 'badge-success' :
                                                     tenant.occupancy_status === 'pending' ? 'badge-warning' : 'badge-error'
                                                 }`}>
-                                                    {tenant.occupancy_status === 'active' ? 'Active' :
-                                                     tenant.occupancy_status === 'pending' ? 'Pending' : 'Moved Out'}
+                                                    {t(`tenants.occupancyStatuses.${tenant.occupancy_status}`)}
                                                 </div>
                                             </div>
                                             <div className="text-xs opacity-70">
-                                                <div><span className="font-medium">Move-in:</span> {tenant.move_in_date ? new Date(tenant.move_in_date).toLocaleDateString() : 'N/A'}</div>
+                                                <div><span className="font-medium">{t('tenants.moveIn')}:</span> {tenant.move_in_date ? formatDate(new Date(tenant.move_in_date)) : t('common.none')}</div>
                                                 {tenant.move_out_date && (
-                                                    <div><span className="font-medium">Move-out:</span> {new Date(tenant.move_out_date).toLocaleDateString()}</div>
+                                                    <div><span className="font-medium">{t('tenants.moveOut')}:</span> {formatDate(new Date(tenant.move_out_date))}</div>
                                                 )}
                                             </div>
                                         </div>
@@ -151,13 +151,13 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                             className="btn btn-sm btn-outline flex-1" 
                                             onClick={() => onEdit(tenant)}
                                         >
-                                            Edit
+                                            {t('common.edit')}
                                         </button>
                                         <button 
                                             className="btn btn-sm btn-error flex-1" 
                                             onClick={() => setDeleteModal(tenant)}
                                         >
-                                            Delete
+                                            {t('common.delete')}
                                         </button>
                                     </div>
                                 </div>
@@ -171,17 +171,16 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
             {deleteModal && (
                 <div className="modal modal-open">
                     <div className="modal-box">
-                        <h3 className="font-bold text-lg">Confirm Delete</h3>
+                        <h3 className="font-bold text-lg">{t('tenants.deleteTenant')}</h3>
                         <p className="py-4">
-                            Are you sure you want to delete tenant <strong>{deleteModal.name} {deleteModal.surname}</strong>? 
-                            This action cannot be undone.
+                            {t('tenants.confirmDelete', { name: `${deleteModal.name} ${deleteModal.surname}` })}
                         </p>
                         <div className="modal-action">
                             <button 
                                 className="btn btn-ghost" 
                                 onClick={() => setDeleteModal(null)}
                             >
-                                Cancel
+                                {t('common.cancel')}
                             </button>
                             <button 
                                 className="btn btn-error" 
@@ -190,7 +189,7 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                     setDeleteModal(null);
                                 }}
                             >
-                                Delete
+                                {t('common.delete')}
                             </button>
                         </div>
                     </div>

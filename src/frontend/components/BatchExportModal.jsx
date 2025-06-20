@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { reportApi } from '../services/api';
+import { useTranslation } from '../hooks/useTranslation';
 
-export default function BatchExportModal({ isOpen, onClose, selectedTenants, tenants, month, year }) {
+export default function BatchExportModal({ isOpen, onClose, selectedTenants, tenants, month, year, pdfLanguage = 'sl' }) {
+    const { t, formatCurrency } = useTranslation();
     const [isExporting, setIsExporting] = useState(false);
     const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
     const [exportStatus, setExportStatus] = useState('idle'); // idle, processing, success, error
@@ -22,7 +24,7 @@ export default function BatchExportModal({ isOpen, onClose, selectedTenants, ten
         setExportErrors([]);
 
         try {
-            const result = await reportApi.batchExport(selectedTenants, month, year, (progress) => {
+            const result = await reportApi.batchExport(selectedTenants, month, year, pdfLanguage, (progress) => {
                 setExportProgress(progress);
             });
 
@@ -64,7 +66,7 @@ export default function BatchExportModal({ isOpen, onClose, selectedTenants, ten
         <div className="modal modal-open">
             <div className="modal-box w-11/12 max-w-2xl">
                 <div className="flex justify-between items-center mb-6">
-                    <h3 className="font-bold text-lg">📦 Batch Export Reports</h3>
+                    <h3 className="font-bold text-lg">📦 {t('reports.batchExport')}</h3>
                     <button 
                         className="btn btn-sm btn-circle" 
                         onClick={onClose}
@@ -76,35 +78,41 @@ export default function BatchExportModal({ isOpen, onClose, selectedTenants, ten
 
                 {/* Export Summary */}
                 <div className="bg-base-200 p-4 rounded-lg mb-6">
-                    <h4 className="font-semibold mb-3">Export Summary</h4>
+                    <h4 className="font-semibold mb-3">{t('reports.exportSummary')}</h4>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                            <span className="text-base-content/70">Period:</span>
+                            <span className="text-base-content/70">{t('reports.period')}:</span>
                             <span className="ml-2 font-medium">{month}/{year}</span>
                         </div>
                         <div>
-                            <span className="text-base-content/70">Reports:</span>
-                            <span className="ml-2 font-medium">{selectedTenants.length} tenants</span>
+                            <span className="text-base-content/70">{t('reports.reportsCount')}:</span>
+                            <span className="ml-2 font-medium">{selectedTenants.length} {t('common.tenant', { count: selectedTenants.length })}</span>
                         </div>
                         <div>
-                            <span className="text-base-content/70">Estimated Size:</span>
+                            <span className="text-base-content/70">{t('common.estimatedSize')}:</span>
                             <span className="ml-2 font-medium">{getEstimatedSize()}</span>
                         </div>
                         <div>
-                            <span className="text-base-content/70">Format:</span>
-                            <span className="ml-2 font-medium">ZIP Archive</span>
+                            <span className="text-base-content/70">{t('common.format')}:</span>
+                            <span className="ml-2 font-medium">{t('reports.zipArchive')}</span>
+                        </div>
+                        <div>
+                            <span className="text-base-content/70">{t('reports.pdfLanguage')}:</span>
+                            <span className="ml-2 font-medium">
+                                {pdfLanguage === 'sl' ? '🇸🇮 ' + t('language.slovenian') : '🇬🇧 ' + t('language.english')}
+                            </span>
                         </div>
                     </div>
                 </div>
 
                 {/* Tenant List */}
                 <div className="mb-6">
-                    <h4 className="font-semibold mb-3">Selected Tenants</h4>
+                    <h4 className="font-semibold mb-3">{t('reports.selectedTenants')}</h4>
                     <div className="max-h-40 overflow-y-auto bg-base-100 p-3 rounded border">
                         {tenants.map((tenant, index) => (
                             <div key={tenant.id} className="flex justify-between items-center py-1">
                                 <span className="text-sm">{tenant.name} {tenant.surname}</span>
-                                <span className="text-xs text-base-content/60">€{tenant.total_due.toFixed(2)}</span>
+                                <span className="text-xs text-base-content/60">{formatCurrency(tenant.total_due)}</span>
                             </div>
                         ))}
                     </div>
@@ -114,7 +122,7 @@ export default function BatchExportModal({ isOpen, onClose, selectedTenants, ten
                 {exportStatus === 'processing' && (
                     <div className="mb-6">
                         <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium">Generating Reports...</span>
+                            <span className="text-sm font-medium">{t('reports.generatingReports')}</span>
                             <span className="text-sm text-base-content/70">
                                 {exportProgress.current} / {exportProgress.total}
                             </span>
@@ -126,7 +134,7 @@ export default function BatchExportModal({ isOpen, onClose, selectedTenants, ten
                             ></div>
                         </div>
                         <div className="text-xs text-center mt-1 text-base-content/60">
-                            {getProgressPercentage()}% complete
+                            {getProgressPercentage()}% {t('common.complete')}
                         </div>
                     </div>
                 )}
@@ -138,8 +146,8 @@ export default function BatchExportModal({ isOpen, onClose, selectedTenants, ten
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <div>
-                            <h3 className="font-bold">Export Successful!</h3>
-                            <div className="text-xs">ZIP file has been downloaded to your computer.</div>
+                            <h3 className="font-bold">{t('reports.exportSuccessful')}</h3>
+                            <div className="text-xs">{t('reports.zipDownloaded')}</div>
                         </div>
                     </div>
                 )}
@@ -151,7 +159,7 @@ export default function BatchExportModal({ isOpen, onClose, selectedTenants, ten
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <div>
-                            <h3 className="font-bold">Export Failed</h3>
+                            <h3 className="font-bold">{t('reports.exportFailed')}</h3>
                             <div className="text-xs">
                                 {exportErrors.map((error, index) => (
                                     <div key={index}>• {error}</div>
@@ -168,7 +176,7 @@ export default function BatchExportModal({ isOpen, onClose, selectedTenants, ten
                         onClick={onClose}
                         disabled={isExporting}
                     >
-                        {exportStatus === 'success' ? 'Close' : 'Cancel'}
+                        {exportStatus === 'success' ? t('common.close') : t('common.cancel')}
                     </button>
                     
                     {exportStatus !== 'success' && (
@@ -180,14 +188,14 @@ export default function BatchExportModal({ isOpen, onClose, selectedTenants, ten
                             {isExporting ? (
                                 <span className="flex items-center gap-2">
                                     <span className="loading loading-spinner loading-xs"></span>
-                                    Exporting...
+                                    {t('reports.exporting')}
                                 </span>
                             ) : (
                                 <span className="flex items-center gap-2">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
-                                    Export as ZIP
+                                    {t('reports.exportAsZip')}
                                 </span>
                             )}
                         </button>
@@ -202,7 +210,7 @@ export default function BatchExportModal({ isOpen, onClose, selectedTenants, ten
                                 setExportProgress({ current: 0, total: 0 });
                             }}
                         >
-                            Try Again
+                            {t('common.tryAgain')}
                         </button>
                     )}
                 </div>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '../hooks/useTranslation';
 
 export default function DownloadButton({ onDownload, isLoading, tenantName, variant = 'primary', size = 'sm' }) {
+    const { t } = useTranslation();
     const [animationState, setAnimationState] = useState('idle'); // idle, loading, success, error
     const [progress, setProgress] = useState(0);
 
@@ -65,7 +67,7 @@ export default function DownloadButton({ onDownload, isLoading, tenantName, vari
                 return (
                     <div className="flex items-center gap-2">
                         <div className="loading loading-spinner loading-xs"></div>
-                        <span className="hidden sm:inline">Generating...</span>
+                        <span className="hidden sm:inline">{t('common.generating')}</span>
                         <div className="w-12 bg-base-300 rounded-full h-1 hidden sm:block">
                             <div 
                                 className="bg-primary h-1 rounded-full transition-all duration-300"
@@ -80,7 +82,7 @@ export default function DownloadButton({ onDownload, isLoading, tenantName, vari
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                         </svg>
-                        <span className="hidden sm:inline">Downloaded!</span>
+                        <span className="hidden sm:inline">{t('common.downloaded')}</span>
                     </div>
                 );
             case 'error':
@@ -89,7 +91,7 @@ export default function DownloadButton({ onDownload, isLoading, tenantName, vari
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
-                        <span className="hidden sm:inline">Failed</span>
+                        <span className="hidden sm:inline">{t('common.failed')}</span>
                     </div>
                 );
             default:
@@ -98,14 +100,14 @@ export default function DownloadButton({ onDownload, isLoading, tenantName, vari
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
-                        <span className="hidden sm:inline">Download PDF</span>
+                        <span className="hidden sm:inline">{t('reports.downloadPdf')}</span>
                     </div>
                 );
         }
     };
 
     return (
-        <div className="tooltip" data-tip={`Download detailed PDF report for ${tenantName}`}>
+        <div className="tooltip" data-tip={`${t('reports.downloadPdf')} - ${tenantName}`}>
             <button 
                 className={getButtonClasses()}
                 onClick={handleClick}
