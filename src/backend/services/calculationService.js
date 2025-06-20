@@ -1,5 +1,6 @@
 import db from '../database/db.js';
 import { calculatePersonDays, calculateSqmDays } from './proportionalCalculationService.js';
+import precisionMath from '../utils/precisionMath.js';
 
 export function calculateAllocations(utilityEntryId) {
     return new Promise((resolve, reject) => {
@@ -26,49 +27,52 @@ export function calculateAllocations(utilityEntryId) {
                 const allocations = [];
                 
                 if (utility.allocation_method === 'per_person') {
-                    const amountPerPerson = utility.total_amount / tenants.length;
+                    const amountPerPerson = precisionMath.allocateUtilityPerPerson(utility.total_amount, tenants.length);
                     tenants.forEach(tenant => {
                         allocations.push({
                             tenant_id: tenant.id,
                             utility_entry_id: utilityEntryId,
-                            allocated_amount: Math.round(amountPerPerson * 100) / 100
+                            allocated_amount: precisionMath.toNumber(amountPerPerson)
                         });
                     });
                 } else if (utility.allocation_method === 'per_sqm') {
-                    const totalArea = tenants.reduce((sum, tenant) => sum + tenant.room_area, 0);
-                    const amountPerSqm = utility.total_amount / totalArea;
-                    tenants.forEach(tenant => {
+                    const tenantAreas = tenants.map(tenant => tenant.room_area);
+                    const allocatedAmounts = precisionMath.allocateUtilityPerArea(utility.total_amount, tenantAreas);
+                    
+                    tenants.forEach((tenant, index) => {
                         allocations.push({
                             tenant_id: tenant.id,
                             utility_entry_id: utilityEntryId,
-                            allocated_amount: Math.round(amountPerSqm * tenant.room_area * 100) / 100
+                            allocated_amount: precisionMath.toNumber(allocatedAmounts[index])
                         });
                     });
                 } else if (utility.allocation_method === 'per_person_weighted') {
                     const tenantsWithPersonDays = calculatePersonDays(tenants, utility.year, utility.month);
-                    const totalPersonDays = tenantsWithPersonDays.reduce((sum, t) => sum + t.personDays, 0);
+                    const totalPersonDays = precisionMath.add(...tenantsWithPersonDays.map(t => t.personDays));
                     
-                    if (totalPersonDays > 0) {
+                    if (precisionMath.isPositive(totalPersonDays)) {
                         tenantsWithPersonDays.forEach(tenant => {
-                            const weightedAmount = (utility.total_amount * tenant.personDays) / totalPersonDays;
+                            const proportion = precisionMath.divide(tenant.personDays, totalPersonDays);
+                            const weightedAmount = precisionMath.multiply(utility.total_amount, proportion);
                             allocations.push({
                                 tenant_id: tenant.id,
                                 utility_entry_id: utilityEntryId,
-                                allocated_amount: Math.round(weightedAmount * 100) / 100
+                                allocated_amount: precisionMath.toNumber(precisionMath.toCurrency(weightedAmount))
                             });
                         });
                     }
                 } else if (utility.allocation_method === 'per_sqm_weighted') {
                     const tenantsWithSqmDays = calculateSqmDays(tenants, utility.year, utility.month);
-                    const totalSqmDays = tenantsWithSqmDays.reduce((sum, t) => sum + t.sqmDays, 0);
+                    const totalSqmDays = precisionMath.add(...tenantsWithSqmDays.map(t => t.sqmDays));
                     
-                    if (totalSqmDays > 0) {
+                    if (precisionMath.isPositive(totalSqmDays)) {
                         tenantsWithSqmDays.forEach(tenant => {
-                            const weightedAmount = (utility.total_amount * tenant.sqmDays) / totalSqmDays;
+                            const proportion = precisionMath.divide(tenant.sqmDays, totalSqmDays);
+                            const weightedAmount = precisionMath.multiply(utility.total_amount, proportion);
                             allocations.push({
                                 tenant_id: tenant.id,
                                 utility_entry_id: utilityEntryId,
-                                allocated_amount: Math.round(weightedAmount * 100) / 100
+                                allocated_amount: precisionMath.toNumber(precisionMath.toCurrency(weightedAmount))
                             });
                         });
                     }
@@ -123,33 +127,47 @@ export function calculateWeightedAllocations(utilityEntryId) {
                 
                 if (utility.allocation_method === 'per_person_weighted') {
                     const tenantsWithPersonDays = calculatePersonDays(tenants, utility.year, utility.month);
-                    const totalPersonDays = tenantsWithPersonDays.reduce((sum, t) => sum + t.personDays, 0);
+                    const totalPersonDays = precisionMath.add(...tenantsWithPersonDays.map(t => t.personDays));
+                    const ratePerPersonDay = precisionMath.isPositive(totalPersonDays) ? 
+                        precisionMath.divide(utility.total_amount, totalPersonDays) : precisionMath.ZERO;
                     
                     breakdown = {
                         method: 'per_person_weighted',
-                        totalPersonDays,
+                        totalPersonDays: precisionMath.toNumber(totalPersonDays),
                         totalAmount: utility.total_amount,
-                        ratePerPersonDay: totalPersonDays > 0 ? utility.total_amount / totalPersonDays : 0,
-                        tenants: tenantsWithPersonDays.map(tenant => ({
-                            ...tenant,
-                            allocatedAmount: totalPersonDays > 0 ? 
-                                Math.round((utility.total_amount * tenant.personDays / totalPersonDays) * 100) / 100 : 0
-                        }))
+                        ratePerPersonDay: precisionMath.toNumber(ratePerPersonDay),
+                        tenants: tenantsWithPersonDays.map(tenant => {
+                            const proportion = precisionMath.isPositive(totalPersonDays) ?
+                                precisionMath.divide(tenant.personDays, totalPersonDays) : precisionMath.ZERO;
+                            const allocatedAmount = precisionMath.multiply(utility.total_amount, proportion);
+                            
+                            return {
+                                ...tenant,
+                                allocatedAmount: precisionMath.toNumber(precisionMath.toCurrency(allocatedAmount))
+                            };
+                        })
                     };
                 } else if (utility.allocation_method === 'per_sqm_weighted') {
                     const tenantsWithSqmDays = calculateSqmDays(tenants, utility.year, utility.month);
-                    const totalSqmDays = tenantsWithSqmDays.reduce((sum, t) => sum + t.sqmDays, 0);
+                    const totalSqmDays = precisionMath.add(...tenantsWithSqmDays.map(t => t.sqmDays));
+                    const ratePerSqmDay = precisionMath.isPositive(totalSqmDays) ?
+                        precisionMath.divide(utility.total_amount, totalSqmDays) : precisionMath.ZERO;
                     
                     breakdown = {
                         method: 'per_sqm_weighted',
-                        totalSqmDays,
+                        totalSqmDays: precisionMath.toNumber(totalSqmDays),
                         totalAmount: utility.total_amount,
-                        ratePerSqmDay: totalSqmDays > 0 ? utility.total_amount / totalSqmDays : 0,
-                        tenants: tenantsWithSqmDays.map(tenant => ({
-                            ...tenant,
-                            allocatedAmount: totalSqmDays > 0 ? 
-                                Math.round((utility.total_amount * tenant.sqmDays / totalSqmDays) * 100) / 100 : 0
-                        }))
+                        ratePerSqmDay: precisionMath.toNumber(ratePerSqmDay),
+                        tenants: tenantsWithSqmDays.map(tenant => {
+                            const proportion = precisionMath.isPositive(totalSqmDays) ?
+                                precisionMath.divide(tenant.sqmDays, totalSqmDays) : precisionMath.ZERO;
+                            const allocatedAmount = precisionMath.multiply(utility.total_amount, proportion);
+                            
+                            return {
+                                ...tenant,
+                                allocatedAmount: precisionMath.toNumber(precisionMath.toCurrency(allocatedAmount))
+                            };
+                        })
                     };
                 }
                 

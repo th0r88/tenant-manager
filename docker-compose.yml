@@ -1,0 +1,39 @@
+services:
+  tenant-manager:
+    build: .
+    container_name: tenant-manager
+    restart: unless-stopped
+    ports:
+      - "5999:5999"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_PATH=/app/data/tenant_manager.db
+      - LOG_LEVEL=info
+      - BACKUP_INTERVAL=24
+    volumes:
+      - tenant-data:/app/data
+      - tenant-backups:/app/backups
+      - tenant-logs:/app/logs
+      - tenant-alerts:/app/alerts
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5999/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - tenant-network
+
+networks:
+  tenant-network:
+    driver: bridge
+
+volumes:
+  tenant-data:
+    driver: local
+  tenant-backups:
+    driver: local
+  tenant-logs:
+    driver: local
+  tenant-alerts:
+    driver: local

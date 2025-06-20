@@ -1,6 +1,7 @@
 import express from 'express';
 import db from '../database/db.js';
 import { calculateAllocations } from '../services/calculationService.js';
+import { validateUtility } from '../middleware/validationMiddleware.js';
 
 const router = express.Router();
 
@@ -12,7 +13,7 @@ router.get('/', (req, res) => {
     });
 });
 
-router.post('/', async (req, res) => {
+router.post('/', validateUtility, async (req, res) => {
     const { property_id = 1, month, year, utility_type, total_amount, allocation_method } = req.body;
     
     db.run(
