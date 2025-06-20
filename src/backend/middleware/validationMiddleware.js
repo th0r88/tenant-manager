@@ -426,10 +426,10 @@ export class ValidationMiddleware {
      */
     sanitizeValue(value, rule) {
         if (rule.sanitize && typeof value === 'string') {
-            // Basic string sanitization
+            // Basic string sanitization - preserve UTF-8 characters including Slovenian letters
             return value.trim()
                 .replace(/\s+/g, ' ') // Normalize whitespace
-                .replace(/[^\w\s\-''.,]/g, ''); // Remove special characters except basic punctuation
+                .replace(/[^\w\s\-''.,:šđčćžŠĐČĆŽ]/g, ''); // Remove special characters except basic punctuation and Slovenian letters
         }
 
         if (rule.type === 'currency') {

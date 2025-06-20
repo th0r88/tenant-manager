@@ -1,5 +1,8 @@
--- Migration script to add multi-property support
+-- Migration script to add multi-property support and fix UTF-8 encoding
 -- Run this after updating schema.sql
+
+-- Set UTF-8 encoding for the database
+PRAGMA encoding = "UTF-8";
 
 -- Create default property for existing data
 INSERT OR IGNORE INTO properties (id, name, address, property_type) 

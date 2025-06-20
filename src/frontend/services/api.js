@@ -7,12 +7,12 @@ export const propertyApi = {
     }),
     create: (property) => fetch(`${API_BASE}/properties`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify(property)
     }).then(r => r.json()),
     update: (id, property) => fetch(`${API_BASE}/properties/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify(property)
     }).then(r => r.json()),
     delete: (id) => fetch(`${API_BASE}/properties/${id}`, {
@@ -27,12 +27,12 @@ export const tenantApi = {
     }),
     create: (tenant) => fetch(`${API_BASE}/tenants`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify(tenant)
     }).then(r => r.json()),
     update: (id, tenant) => fetch(`${API_BASE}/tenants/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify(tenant)
     }).then(r => r.json()),
     delete: (id) => fetch(`${API_BASE}/tenants/${id}`, {
@@ -47,12 +47,12 @@ export const utilityApi = {
     }),
     create: (utility) => fetch(`${API_BASE}/utilities`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify(utility)
     }).then(r => r.json()),
     update: (id, utility) => fetch(`${API_BASE}/utilities/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify(utility)
     }).then(r => r.json()),
     delete: (id) => fetch(`${API_BASE}/utilities/${id}`, {
@@ -85,7 +85,7 @@ export const reportApi = {
         try {
             const response = await fetch(`${API_BASE}/reports/batch-export`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json; charset=utf-8' },
                 body: JSON.stringify({
                     tenantIds,
                     month,

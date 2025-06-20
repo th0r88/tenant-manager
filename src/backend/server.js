@@ -30,7 +30,16 @@ const serverConfig = config.getServerConfig();
 const PORT = serverConfig.port;
 
 app.use(cors(serverConfig.cors));
-app.use(express.json({ limit: config.get('security.maxRequestSize') }));
+app.use(express.json({ 
+    limit: config.get('security.maxRequestSize'),
+    type: 'application/json',
+    verify: (req, res, buf) => {
+        // Ensure proper UTF-8 encoding
+        if (buf && buf.length) {
+            req.rawBody = buf.toString('utf8');
+        }
+    }
+}));
 
 // Add response formatting middleware
 app.use(responseMiddleware());

@@ -8,6 +8,10 @@ const __dirname = dirname(__filename);
 
 const db = new sqlite3.Database('tenant_manager.db');
 
+// Set UTF-8 encoding and enable foreign keys
+db.exec('PRAGMA encoding = "UTF-8"');
+db.exec('PRAGMA foreign_keys = ON');
+
 export function initializeDatabase() {
     const schema = readFileSync(join(__dirname, 'schema.sql'), 'utf8');
     
