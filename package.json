@@ -10,7 +10,7 @@
     "preview": "vite preview src/frontend",
     "clean": "rm -rf dist node_modules package-lock.json",
     "reset": "npm run clean && npm install",
-    "check": "npm run build && npm run server & sleep 3 && curl -f http://localhost:3001/api/health && pkill -f 'node.*server.js'",
+    "check": "npm run build && npm run server & sleep 3 && curl -f http://localhost:5999/api/health && pkill -f 'node.*server.js'",
     "validate-translations": "node scripts/validateTranslations.js",
     "test": "vitest",
     "test:localization": "vitest run src/frontend/tests/localization.test.js",
