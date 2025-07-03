@@ -7,16 +7,16 @@ export const translations = {
   sl: {
     // PDF Headers and Labels
     pdf: {
-      statementDate: 'Datum izjave',
+      statementDate: 'Datum obračuna',
       billingPeriod: 'Obračunsko obdobje',
       tenant: 'Najemnik',
       chargesBreakdown: 'RAZČLENITEV STROŠKOV',
       monthlyRent: 'MESEČNA NAJEMNINA',
-      utilityCharges: 'STROŠKI KOMUNALNIH STORITEV',
+      utilityCharges: 'STROŠKI',
       totalAmountDue: 'SKUPAJ ZA PLAČILO',
       amount: 'Znesek',
       totalAmount: 'Skupni znesek',
-      yourShare: 'Vaš delež',
+      yourShare: 'Tvoj delež',
       utilityType: 'Tip obračuna',
       generated: 'Ustvarjeno',
       propertyManagementSystem: 'Sistem upravljanja nepremičnin',
@@ -38,11 +38,12 @@ export const translations = {
       electricity: 'Elektrika',
       water: 'Voda',
       heating: 'Ogrevanje',
+      tv_rtv: 'TV + RTV prispevek',
+      cleaning: 'Snaga',
       internet: 'Internet',
       maintenance: 'Vzdrževanje',
       gas: 'Plin',
-      waste: 'Smeti',
-      cleaning: 'Čiščenje'
+      waste: 'Smeti'
     }
   },
   en: {
@@ -79,11 +80,12 @@ export const translations = {
       electricity: 'Electricity',
       water: 'Water',
       heating: 'Heating',
+      tv_rtv: 'TV + RTV License',
+      cleaning: 'Cleaning',
       internet: 'Internet',
       maintenance: 'Maintenance',
       gas: 'Gas',
-      waste: 'Waste Management',
-      cleaning: 'Cleaning'
+      waste: 'Waste Management'
     }
   }
 };
@@ -139,6 +141,11 @@ export function translateUtilityType(utilityType, language = 'sl') {
     'water': 'water',
     'ogrevanje': 'heating',
     'heating': 'heating',
+    'tv_rtv': 'tv_rtv',
+    'tv + rtv prispevek': 'tv_rtv',
+    'snaga': 'cleaning',
+    'čiščenje': 'cleaning',
+    'cleaning': 'cleaning',
     'plin': 'gas',
     'gas': 'gas',
     'internet': 'internet',
@@ -146,9 +153,7 @@ export function translateUtilityType(utilityType, language = 'sl') {
     'vzdrževanje': 'maintenance',
     'maintenance': 'maintenance',
     'smeti': 'waste',
-    'waste': 'waste',
-    'čiščenje': 'cleaning',
-    'cleaning': 'cleaning'
+    'waste': 'waste'
   };
   
   const standardKey = typeMap[type];

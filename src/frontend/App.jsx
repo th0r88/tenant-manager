@@ -8,13 +8,14 @@ import Dashboard from './components/Dashboard';
 import ErrorBoundary, { ReportGeneratorErrorFallback, NetworkErrorFallback } from './components/ErrorBoundary';
 import { ErrorDisplay, useApiErrorHandler } from './hooks/useErrorHandler.jsx';
 import { tenantApi, utilityApi, propertyApi } from './services/api';
-import { LanguageProvider } from './context/LanguageContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import LanguageSelector from './components/LanguageSelector';
 import { useTranslation } from './hooks/useTranslation';
 import './styles.css';
 
 function AppContent() {
     const { t, getMonthNames, getUtilityTypes, formatCurrency } = useTranslation();
+    const { changeLanguage } = useLanguage();
     const [properties, setProperties] = useState([]);
     const [selectedProperty, setSelectedProperty] = useState(null);
     const [tenants, setTenants] = useState([]);
@@ -24,6 +25,7 @@ function AppContent() {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [successVisible, setSuccessVisible] = useState(false);
     const { error: apiError, isLoading: globalLoading, handleApiCall, clearError } = useApiErrorHandler();
     const [utilityFilter, setUtilityFilter] = useState({
         month: (new Date().getMonth() + 1).toString(),
@@ -31,6 +33,7 @@ function AppContent() {
         utility_type: ''
     });
     const [isPropertyDropdownOpen, setIsPropertyDropdownOpen] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         console.log('Environment variables:', {
@@ -46,6 +49,25 @@ function AppContent() {
             loadUtilities();
         }
     }, [selectedProperty]);
+
+    // Auto-dismiss success notifications with fade animation
+    useEffect(() => {
+        if (success) {
+            setSuccessVisible(true);
+            const fadeTimer = setTimeout(() => {
+                setSuccessVisible(false);
+            }, 2700); // Start fade 300ms before clearing
+            const clearTimer = setTimeout(() => {
+                setSuccess('');
+            }, 3000);
+            return () => {
+                clearTimeout(fadeTimer);
+                clearTimeout(clearTimer);
+            };
+        } else {
+            setSuccessVisible(false);
+        }
+    }, [success]);
 
     const loadProperties = async () => {
         try {
@@ -112,13 +134,26 @@ function AppContent() {
             if (editingUtility) {
                 await utilityApi.update(editingUtility.id, utilityData);
                 setSuccess(t('forms.successSaved'));
+                // Update filter to show the edited utility
+                setUtilityFilter({
+                    month: utilityData.month.toString(),
+                    year: utilityData.year.toString(),
+                    utility_type: ''
+                });
             } else {
                 await utilityApi.create(utilityData);
                 setSuccess(t('forms.successSaved'));
+                // Update filter to show the newly added utility
+                setUtilityFilter({
+                    month: utilityData.month.toString(),
+                    year: utilityData.year.toString(),
+                    utility_type: ''
+                });
             }
             setEditingUtility(null);
             loadUtilities();
         } catch (err) {
+            console.error('Error saving utility:', err);
             setError(t('forms.errorSaving'));
         }
     };
@@ -158,17 +193,32 @@ function AppContent() {
     return (
         <div className="min-h-screen bg-base-200">
                 <div className="navbar bg-base-100 shadow-lg">
-                    <div className="container mx-auto px-4 flex justify-between items-center w-full max-w-5xl">
-                        <div className="navbar-start">
-                            <h1 className="text-3xl font-bold">{t('common.appTitle', 'Tenant Manager')}</h1>
+                    <div className="container mx-auto flex justify-between items-center w-full max-w-5xl" style={{paddingLeft: '1rem', paddingRight: '0.5rem'}}>
+                        <div className="navbar-start" style={{width: '75%'}}>
+                            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold pr-4">{t('common.appTitle', 'Tenant Manager')}</h1>
                         </div>
-                        <div className="navbar-end flex items-center space-x-4">
+                        <div className="navbar-end flex items-center space-x-4" style={{width: '25%'}}>
+                            {/* Mobile Hamburger Menu Button */}
+                            <button
+                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                                className="lg:hidden flex items-center justify-center w-10 h-10 bg-base-100 border border-base-300 rounded-md hover:bg-base-200 focus:outline-none focus:ring-2 focus:ring-primary transition-colors duration-200"
+                                aria-label="Toggle mobile menu"
+                                aria-expanded={isMobileMenuOpen}
+                                aria-controls="mobile-menu"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                </svg>
+                            </button>
+                            
+                            {/* Desktop Language and Property Selectors */}
+                            <div className="hidden lg:flex items-center space-x-4">
                             <LanguageSelector />
                             <div className="dropdown dropdown-end group">
                             <div 
                                 tabIndex={0} 
                                 role="button" 
-                                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-base-content bg-base-100 border border-base-300 rounded-md hover:bg-base-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                                 onClick={(e) => {
                                     e.currentTarget.focus();
                                     setIsPropertyDropdownOpen(true);
@@ -182,7 +232,7 @@ function AppContent() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                 </svg>
                             </div>
-                            <ul tabIndex={0} className="dropdown-content menu bg-white border border-gray-300 rounded-md shadow-lg z-[1] w-80 p-1">
+                            <ul tabIndex={0} className="dropdown-content menu bg-base-100 border border-base-300 rounded-md shadow-lg z-[1] w-80 p-1">
                                 {properties.map(property => (
                                     <li key={property.id}>
                                         <button
@@ -190,35 +240,36 @@ function AppContent() {
                                                 setSelectedProperty(property);
                                                 setIsPropertyDropdownOpen(false);
                                             }}
-                                            className={`flex flex-col items-start w-full px-4 py-3 text-sm text-left hover:bg-gray-100 rounded-md ${
+                                            className={`flex flex-col items-start w-full px-4 py-3 text-sm text-left hover:bg-base-200 rounded-md ${
                                                 selectedProperty?.id === property.id
-                                                    ? 'bg-blue-50 text-blue-700'
-                                                    : 'text-gray-700'
+                                                    ? 'bg-primary/10 text-primary'
+                                                    : 'text-base-content'
                                             }`}
                                         >
                                             <div className="font-semibold">{property.name}</div>
-                                            <div className="text-xs text-gray-500 mt-1">{property.address}</div>
+                                            <div className="text-xs text-base-content/70 mt-1">{property.address}</div>
                                             {selectedProperty?.id === property.id && (
-                                                <svg className="w-4 h-4 ml-auto text-blue-600 absolute right-2 top-1/2 transform -translate-y-1/2" fill="currentColor" viewBox="0 0 20 20">
+                                                <svg className="w-4 h-4 ml-auto text-primary absolute right-2 top-1/2 transform -translate-y-1/2" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                                 </svg>
                                             )}
                                         </button>
                                     </li>
                                 ))}
-                                <div className="border-t border-gray-200 my-1"></div>
+                                <div className="border-t border-base-300 my-1"></div>
                                 <li>
                                     <button
                                         onClick={() => {
                                             setActiveTab('properties');
                                             setIsPropertyDropdownOpen(false);
                                         }}
-                                        className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
+                                        className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-primary-content bg-primary hover:bg-primary/90 rounded-md"
                                     >
                                         {t('properties.title')}
                                     </button>
                                 </li>
                             </ul>
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -242,7 +293,9 @@ function AppContent() {
                     </div>
                 )}
                 {success && (
-                    <div className="alert alert-success mb-4">
+                    <div className={`alert alert-success mb-4 transition-opacity duration-300 ease-out ${
+                        successVisible ? 'opacity-100' : 'opacity-0'
+                    }`}>
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -257,23 +310,21 @@ function AppContent() {
                         </button>
                     </div>
                 )}
-                
-                <div className="flex space-x-4 mb-6" style={{marginLeft: 0, paddingLeft: 0}}>
+
+                {/* Desktop Navigation */}
+                <div className="hidden lg:flex space-x-4 mb-6" style={{marginLeft: 0, paddingLeft: 0}}>
                     <div className="tooltip" data-tip={t('dashboard.title')}>
                         <button 
-                            className={`flex items-center space-x-2 text-sm font-medium rounded-md hover:bg-gray-50 focus:outline-none ${
+                            className={`flex items-center space-x-2 text-sm font-medium rounded-md hover:bg-base-200 focus:outline-none ${
                                 activeTab === 'dashboard' 
-                                    ? 'bg-white shadow-sm' 
-                                    : 'bg-white text-gray-700'
+                                    ? 'bg-base-100 shadow-sm text-primary border-primary' 
+                                    : 'bg-base-100 text-base-content border-base-300'
                             }`}
                             style={{
                                 padding: '10px 14px',
                                 border: activeTab === 'dashboard' 
-                                    ? '3px solid oklch(45% 0.24 277.023)' 
-                                    : '3px solid #d1d5db',
-                                color: activeTab === 'dashboard' 
-                                    ? 'oklch(45% 0.24 277.023)' 
-                                    : undefined
+                                    ? '3px solid' 
+                                    : '3px solid'
                             }}
                             onClick={() => setActiveTab('dashboard')}
                         >
@@ -284,23 +335,18 @@ function AppContent() {
                         <button 
                             className={`flex items-center space-x-2 text-sm font-medium rounded-md focus:outline-none ${
                                 !selectedProperty 
-                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                    ? 'bg-base-200 text-base-content opacity-40 cursor-not-allowed' 
                                     : activeTab === 'tenants'
-                                        ? 'bg-white shadow-sm'
-                                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                                        ? 'bg-base-100 shadow-sm text-secondary border-secondary'
+                                        : 'bg-base-100 text-base-content border-base-300 hover:bg-base-200'
                             }`}
                             style={{
                                 padding: '10px 14px',
                                 border: !selectedProperty 
-                                    ? '3px solid #d1d5db'
+                                    ? '3px solid'
                                     : activeTab === 'tenants'
-                                        ? '3px solid oklch(65% 0.241 354.308)'
-                                        : '3px solid #d1d5db',
-                                color: !selectedProperty 
-                                    ? undefined
-                                    : activeTab === 'tenants'
-                                        ? 'oklch(65% 0.241 354.308)'
-                                        : undefined
+                                        ? '3px solid'
+                                        : '3px solid'
                             }}
                             onClick={() => selectedProperty && setActiveTab('tenants')}
                             disabled={!selectedProperty}
@@ -312,23 +358,18 @@ function AppContent() {
                         <button 
                             className={`flex items-center space-x-2 text-sm font-medium rounded-md focus:outline-none ${
                                 !selectedProperty 
-                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                    ? 'bg-base-200 text-base-content opacity-40 cursor-not-allowed' 
                                     : activeTab === 'utilities'
-                                        ? 'bg-white shadow-sm'
-                                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                                        ? 'bg-base-100 shadow-sm text-accent border-accent'
+                                        : 'bg-base-100 text-base-content border-base-300 hover:bg-base-200'
                             }`}
                             style={{
                                 padding: '10px 14px',
                                 border: !selectedProperty 
-                                    ? '3px solid #d1d5db'
+                                    ? '3px solid'
                                     : activeTab === 'utilities'
-                                        ? '3px solid oklch(77% 0.152 181.912)'
-                                        : '3px solid #d1d5db',
-                                color: !selectedProperty 
-                                    ? undefined
-                                    : activeTab === 'utilities'
-                                        ? 'oklch(77% 0.152 181.912)'
-                                        : undefined
+                                        ? '3px solid'
+                                        : '3px solid'
                             }}
                             onClick={() => selectedProperty && setActiveTab('utilities')}
                             disabled={!selectedProperty}
@@ -340,23 +381,18 @@ function AppContent() {
                         <button 
                             className={`flex items-center space-x-2 text-sm font-medium rounded-md focus:outline-none ${
                                 !selectedProperty 
-                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                    ? 'bg-base-200 text-base-content opacity-40 cursor-not-allowed' 
                                     : activeTab === 'reports'
-                                        ? 'bg-white shadow-sm'
-                                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                                        ? 'bg-base-100 shadow-sm text-info border-info'
+                                        : 'bg-base-100 text-base-content border-base-300 hover:bg-base-200'
                             }`}
                             style={{
                                 padding: '10px 14px',
                                 border: !selectedProperty 
-                                    ? '3px solid #d1d5db'
+                                    ? '3px solid'
                                     : activeTab === 'reports'
-                                        ? '3px solid oklch(76% 0.177 163.223)'
-                                        : '3px solid #d1d5db',
-                                color: !selectedProperty 
-                                    ? undefined
-                                    : activeTab === 'reports'
-                                        ? 'oklch(76% 0.177 163.223)'
-                                        : undefined
+                                        ? '3px solid'
+                                        : '3px solid'
                             }}
                             onClick={() => selectedProperty && setActiveTab('reports')}
                             disabled={!selectedProperty}
@@ -365,6 +401,210 @@ function AppContent() {
                         </button>
                     </div>
                 </div>
+
+                {/* Mobile Menu Overlay */}
+                {isMobileMenuOpen && (
+                    <>
+                        {/* Backdrop */}
+                        <div 
+                            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                        />
+                        
+                        {/* Mobile Menu */}
+                        <div 
+                            id="mobile-menu"
+                            className="fixed top-0 right-0 h-full w-80 bg-base-100 shadow-xl z-50 lg:hidden transform transition-transform duration-300 ease-in-out"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="mobile-menu-title"
+                        >
+                            <div className="p-6">
+                                {/* Close Button */}
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 id="mobile-menu-title" className="text-xl font-bold">Menu</h2>
+                                    <button
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className="flex items-center justify-center w-8 h-8 bg-base-200 rounded-md hover:bg-base-300 transition-colors duration-200"
+                                        aria-label="Close menu"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                {/* Navigation Items */}
+                                <nav className="space-y-2" role="navigation" aria-label="Main navigation">
+                                    {/* Dashboard */}
+                                    <button
+                                        onClick={() => {
+                                            setActiveTab('dashboard');
+                                            setIsMobileMenuOpen(false);
+                                        }}
+                                        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-md text-left transition-colors duration-200 ${
+                                            activeTab === 'dashboard' 
+                                                ? 'bg-primary text-primary-content' 
+                                                : 'hover:bg-base-200'
+                                        }`}
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v3H8V5z" />
+                                        </svg>
+                                        <span>{t('navigation.dashboard')}</span>
+                                    </button>
+
+                                    {/* Tenants */}
+                                    <button
+                                        onClick={() => {
+                                            if (selectedProperty) {
+                                                setActiveTab('tenants');
+                                                setIsMobileMenuOpen(false);
+                                            }
+                                        }}
+                                        disabled={!selectedProperty}
+                                        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-md text-left transition-colors duration-200 ${
+                                            !selectedProperty
+                                                ? 'opacity-40 cursor-not-allowed'
+                                                : activeTab === 'tenants' 
+                                                    ? 'bg-secondary text-secondary-content' 
+                                                    : 'hover:bg-base-200'
+                                        }`}
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                        <span>{t('navigation.tenants')}</span>
+                                    </button>
+
+                                    {/* Utilities */}
+                                    <button
+                                        onClick={() => {
+                                            if (selectedProperty) {
+                                                setActiveTab('utilities');
+                                                setIsMobileMenuOpen(false);
+                                            }
+                                        }}
+                                        disabled={!selectedProperty}
+                                        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-md text-left transition-colors duration-200 ${
+                                            !selectedProperty
+                                                ? 'opacity-40 cursor-not-allowed'
+                                                : activeTab === 'utilities' 
+                                                    ? 'bg-accent text-accent-content' 
+                                                    : 'hover:bg-base-200'
+                                        }`}
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                        <span>{t('navigation.utilities')}</span>
+                                    </button>
+
+                                    {/* Reports */}
+                                    <button
+                                        onClick={() => {
+                                            if (selectedProperty) {
+                                                setActiveTab('reports');
+                                                setIsMobileMenuOpen(false);
+                                            }
+                                        }}
+                                        disabled={!selectedProperty}
+                                        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-md text-left transition-colors duration-200 ${
+                                            !selectedProperty
+                                                ? 'opacity-40 cursor-not-allowed'
+                                                : activeTab === 'reports' 
+                                                    ? 'bg-info text-info-content' 
+                                                    : 'hover:bg-base-200'
+                                        }`}
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <span>{t('navigation.reports')}</span>
+                                    </button>
+
+                                    {/* Properties */}
+                                    <button
+                                        onClick={() => {
+                                            setActiveTab('properties');
+                                            setIsMobileMenuOpen(false);
+                                        }}
+                                        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-md text-left transition-colors duration-200 ${
+                                            activeTab === 'properties' 
+                                                ? 'bg-warning text-warning-content' 
+                                                : 'hover:bg-base-200'
+                                        }`}
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-8 0H3m2 0h6M7 3h2v4H7V3zm8 0h2v4h-2V3zm-4 0h2v4h-2V3z" />
+                                        </svg>
+                                        <span>{t('properties.title')}</span>
+                                    </button>
+                                </nav>
+
+                                {/* Language & Property Selection */}
+                                <div className="mt-8 pt-6 border-t border-base-300">
+                                    {/* Language Flags */}
+                                    <div className="mb-4">
+                                        <div className="text-sm font-medium mb-2">{t('language.select')}</div>
+                                        <div className="flex space-x-2">
+                                            <button
+                                                onClick={async () => {
+                                                    await changeLanguage('sl');
+                                                }}
+                                                className="flex items-center space-x-2 px-3 py-2 text-sm rounded-md bg-base-200 hover:bg-base-300 transition-colors duration-200"
+                                            >
+                                                <span className="text-lg">🇸🇮</span>
+                                                <span>SL</span>
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    await changeLanguage('en');
+                                                }}
+                                                className="flex items-center space-x-2 px-3 py-2 text-sm rounded-md bg-base-200 hover:bg-base-300 transition-colors duration-200"
+                                            >
+                                                <span className="text-lg">🇬🇧</span>
+                                                <span>EN</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Property Selection */}
+                                    <div className="mb-4">
+                                        <div className="text-sm font-medium mb-2">{t('properties.selectProperty')}</div>
+                                        <div className="space-y-2">
+                                            {properties.map(property => (
+                                                <button
+                                                    key={property.id}
+                                                    onClick={() => {
+                                                        setSelectedProperty(property);
+                                                        setIsMobileMenuOpen(false);
+                                                    }}
+                                                    className={`w-full flex items-start p-3 text-left rounded-md transition-colors duration-200 ${
+                                                        selectedProperty?.id === property.id
+                                                            ? 'bg-primary text-primary-content'
+                                                            : 'bg-base-200 hover:bg-base-300'
+                                                    }`}
+                                                >
+                                                    <div className="flex-1">
+                                                        <div className="font-medium">{property.name}</div>
+                                                        <div className="text-xs opacity-70 mt-1">{property.address}</div>
+                                                    </div>
+                                                    {selectedProperty?.id === property.id && (
+                                                        <svg className="w-5 h-5 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                        </svg>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
             
             {activeTab === 'dashboard' && <Dashboard />}
             
@@ -466,11 +706,11 @@ function AppContent() {
                                     {filteredUtilities.map((utility) => (
                                     <div key={utility.id} className="card bg-base-100 shadow-xl">
                                         <div className="card-body">
-                                            <h3 className="card-title">{utility.utility_type}</h3>
+                                            <h3 className="card-title">{getUtilityTypes().find(type => type.key === utility.utility_type)?.label || utility.utility_type}</h3>
                                             <div className="space-y-2">
                                                 <p><span className="font-semibold">{t('utilities.period')}</span> {utility.month}/{utility.year}</p>
                                                 <p><span className="font-semibold">{t('utilities.totalAmountLabel')}</span> {formatCurrency(utility.total_amount)}</p>
-                                                <p><span className="font-semibold">{t('utilities.allocationLabel')}</span> {utility.allocation_method === 'per_person' ? t('utilities.perPerson') : (utility.allocation_method === 'per_square_meter' || utility.allocation_method === 'per_sqm') ? 'po m²' : utility.allocation_method}</p>
+                                                <p><span className="font-semibold">{t('utilities.allocationLabel')}</span> {utility.allocation_method === 'per_person' ? t('utilities.perPerson') : utility.allocation_method === 'per_sqm' ? 'po m²' : utility.allocation_method}</p>
                                             </div>
                                             <div className="card-actions justify-end mt-4">
                                                 <div className="tooltip" data-tip={t('utilities.editUtilityTooltip')}>

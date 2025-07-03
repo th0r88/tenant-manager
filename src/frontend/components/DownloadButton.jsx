@@ -47,6 +47,7 @@ export default function DownloadButton({ onDownload, isLoading, tenantName, vari
         const baseClasses = `btn btn-${size}`;
         const variantClasses = {
             primary: 'btn-primary',
+            info: 'btn-info',
             outline: 'btn-outline',
             success: 'btn-success',
             error: 'btn-error'
@@ -70,7 +71,7 @@ export default function DownloadButton({ onDownload, isLoading, tenantName, vari
                         <span className="hidden sm:inline">{t('common.generating')}</span>
                         <div className="w-12 bg-base-300 rounded-full h-1 hidden sm:block">
                             <div 
-                                className="bg-primary h-1 rounded-full transition-all duration-300"
+                                className="bg-info h-1 rounded-full transition-all duration-300"
                                 style={{ width: `${progress}%` }}
                             ></div>
                         </div>

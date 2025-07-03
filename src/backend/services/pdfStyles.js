@@ -273,8 +273,17 @@ export const PDF_UTILS = {
 
     let currentX = x;
     columns.forEach(column => {
-      // Header text
-      this.addStyledText(doc, column.header, currentX + 5, currentY + 6, {
+      // Header text with alignment support
+      const headerAlign = column.headerAlign || 'left';
+      let headerTextX = currentX + 5;
+      
+      if (headerAlign === 'right') {
+        headerTextX = currentX + column.width - 5 - doc.widthOfString(column.header);
+      } else if (headerAlign === 'center') {
+        headerTextX = currentX + (column.width - doc.widthOfString(column.header)) / 2;
+      }
+      
+      this.addStyledText(doc, column.header, headerTextX, currentY + 6, {
         fontSize: fontSize,
         color: headerTextColor,
         font: PDF_STYLES.fonts.secondary

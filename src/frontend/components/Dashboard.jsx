@@ -3,7 +3,7 @@ import { dashboardApi } from '../services/api';
 import { useTranslation } from '../hooks/useTranslation';
 
 export default function Dashboard() {
-    const { t, formatCurrency, formatDate } = useTranslation();
+    const { t, formatCurrency, formatDate, translateUtilityType } = useTranslation();
     const [overview, setOverview] = useState({});
     const [propertiesBreakdown, setPropertiesBreakdown] = useState([]);
     const [recentActivity, setRecentActivity] = useState([]);
@@ -73,7 +73,7 @@ export default function Dashboard() {
             )}
             
             {/* Overview Statistics */}
-            <div className="stats stats-vertical lg:stats-horizontal shadow w-full bg-white">
+            <div className="stats stats-vertical lg:stats-horizontal shadow w-full bg-base-100">
                 <div className="stat">
                     <div className="stat-figure text-primary">
                         <svg className="w-8 h-8" style={{ marginTop: '50%' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,7 +197,16 @@ export default function Dashboard() {
                                         <div className="flex-1">
                                             <div className="font-medium text-sm">
                                                 {activity.type === 'tenant' ? t('dashboard.newTenant') : t('dashboard.utilityEntry')}
-                                                <span className="font-bold"> {activity.description}</span>
+                                                <span className="font-bold"> {activity.type === 'utility' ? 
+                                                    (() => {
+                                                        // Extract utility type from "utility_type (month/year)" format
+                                                        const match = activity.description.match(/^([^(]+)/);
+                                                        const utilityType = match ? match[1].trim() : activity.description;
+                                                        const periodMatch = activity.description.match(/\(([^)]+)\)/);
+                                                        const period = periodMatch ? periodMatch[1] : '';
+                                                        return translateUtilityType(utilityType) + (period ? ` (${period})` : '');
+                                                    })()
+                                                    : activity.description}</span>
                                             </div>
                                             <div className="text-xs opacity-70">
                                                 {activity.property_name} • {formatDate(activity.timestamp)}
@@ -222,26 +231,50 @@ export default function Dashboard() {
                                 <p>{t('dashboard.noRevenueData')}</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="table table-zebra w-full">
-                                    <thead>
-                                        <tr>
-                                            <th className="whitespace-nowrap">{t('dashboard.period')}</th>
-                                            <th className="whitespace-nowrap">{t('dashboard.rentRevenue')}</th>
-                                            <th className="whitespace-nowrap">{t('dashboard.utilityRevenue')}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {revenueTrends.map((trend, index) => (
-                                            <tr key={index}>
-                                                <td className="font-medium whitespace-nowrap">{trend.month}/{trend.year}</td>
-                                                <td className="whitespace-nowrap">{formatCurrency(trend.rent_revenue)}</td>
-                                                <td className="whitespace-nowrap">{formatCurrency(trend.utility_revenue)}</td>
+                            <>
+                                {/* Desktop Table */}
+                                <div className="hidden md:block overflow-x-auto">
+                                    <table className="table table-zebra w-full">
+                                        <thead>
+                                            <tr>
+                                                <th className="whitespace-nowrap">{t('dashboard.period')}</th>
+                                                <th className="whitespace-nowrap">{t('dashboard.rentRevenue')}</th>
+                                                <th className="whitespace-nowrap">{t('dashboard.utilityRevenue')}</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                        </thead>
+                                        <tbody>
+                                            {revenueTrends.map((trend, index) => (
+                                                <tr key={index}>
+                                                    <td className="font-medium whitespace-nowrap">{trend.month}/{trend.year}</td>
+                                                    <td className="whitespace-nowrap">{formatCurrency(trend.rent_revenue)}</td>
+                                                    <td className="whitespace-nowrap">{formatCurrency(trend.utility_revenue)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Mobile Cards */}
+                                <div className="block md:hidden space-y-3">
+                                    {revenueTrends.map((trend, index) => (
+                                        <div key={index} className="bg-base-200 p-4 rounded-lg">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="font-semibold text-base">{trend.month}/{trend.year}</span>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between">
+                                                    <span className="text-sm opacity-70">{t('dashboard.rentRevenue')}</span>
+                                                    <span className="font-medium">{formatCurrency(trend.rent_revenue)}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-sm opacity-70">{t('dashboard.utilityRevenue')}</span>
+                                                    <span className="font-medium">{formatCurrency(trend.utility_revenue)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
                         )}
                     </div>
                 </div>
@@ -260,7 +293,7 @@ export default function Dashboard() {
                                     <div key={index} className="card bg-base-200 shadow">
                                         <div className="card-body">
                                             <div className="flex justify-between items-center mb-2">
-                                                <h3 className="card-title text-lg">{utility.utility_type}</h3>
+                                                <h3 className="card-title text-lg">{translateUtilityType(utility.utility_type)}</h3>
                                                 <div className="text-2xl font-bold text-primary">{formatCurrency(utility.total_amount)}</div>
                                             </div>
                                             <div className="flex justify-between text-sm opacity-70">

@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export async function generateTenantReport(tenant, month, year, utilities, options = {}) {
-    const { streaming = false, progressCallback = null, language = 'sl' } = options;
+    const { streaming = false, progressCallback = null, language = 'sl', utilitiesFromPreviousMonth = false, utilitiesProrated = false, prevMonth = null, prevYear = null } = options;
     const lang = normalizeLanguage(language);
     
     return new Promise(async (resolve, reject) => {
@@ -78,7 +78,12 @@ export async function generateTenantReport(tenant, month, year, utilities, optio
             
             // Billing Details Section (single page)
             if (progressCallback) progressCallback('drawing_billing', { tenantId: tenant.id });
-            currentY = drawBillingSection(doc, currentY, rentCalculation, utilities, month, lang);
+            currentY = drawBillingSection(doc, currentY, rentCalculation, utilities, month, lang, {
+                utilitiesFromPreviousMonth,
+                utilitiesProrated,
+                prevMonth,
+                prevYear
+            });
             
             
             doc.end();
@@ -100,7 +105,7 @@ function drawHeader(doc, tenant, month, year, language = 'sl') {
         color: PDF_STYLES.colors.primaryDark,
         font: PDF_STYLES.fonts.secondary
     });
-    currentY += 20;
+    currentY += 35;
     
     // Statement date with localized formatting
     const today = new Date();
@@ -130,9 +135,10 @@ function drawHeader(doc, tenant, month, year, language = 'sl') {
 
 
 // Simple billing section (single page optimized)
-function drawBillingSection(doc, startY, rentCalculation, utilities, month, language = 'sl') {
+function drawBillingSection(doc, startY, rentCalculation, utilities, month, language = 'sl', options = {}) {
     const { pageMargin, section } = PDF_STYLES.spacing;
     const { subheading } = PDF_STYLES.fontSize;
+    const { utilitiesFromPreviousMonth = false, utilitiesProrated = false, prevMonth = null, prevYear = null } = options;
     
     let currentY = startY;
     
@@ -155,7 +161,7 @@ function drawBillingSection(doc, startY, rentCalculation, utilities, month, lang
     
     const rentColumns = [
         { header: t(language, 'pdf.monthlyRent'), key: 'description', width: 200 },
-        { header: t(language, 'pdf.amount'), key: 'amount', width: 120, align: 'right', bold: true }
+        { header: t(language, 'pdf.amount'), key: 'amount', width: 120, align: 'right', headerAlign: 'right', bold: true }
     ];
     
     const currentMonth = getMonthName(month - 1, language);
@@ -176,7 +182,12 @@ function drawBillingSection(doc, startY, rentCalculation, utilities, month, lang
     
     // Simple utilities table (single page)
     if (utilities.length > 0) {
-        currentY = drawUtilitiesTableWithPaging(doc, currentY, utilities, language);
+        currentY = drawUtilitiesTableWithPaging(doc, currentY, utilities, language, {
+            utilitiesFromPreviousMonth,
+            utilitiesProrated,
+            prevMonth,
+            prevYear
+        });
     }
     
     // Simple total amount
@@ -186,13 +197,23 @@ function drawBillingSection(doc, startY, rentCalculation, utilities, month, lang
 }
 
 // Simple utilities table (single page optimized)
-function drawUtilitiesTableWithPaging(doc, startY, utilities, language = 'sl') {
+function drawUtilitiesTableWithPaging(doc, startY, utilities, language = 'sl', options = {}) {
     const { pageMargin, section } = PDF_STYLES.spacing;
+    const { utilitiesFromPreviousMonth = false, utilitiesProrated = false, prevMonth = null, prevYear = null } = options;
     
     let currentY = startY;
     
-    // Simple utilities section header
-    PDF_UTILS.addStyledText(doc, t(language, 'pdf.utilityCharges'), pageMargin, currentY, {
+    // Simple utilities section header with month indication
+    let utilitiesHeader = t(language, 'pdf.utilityCharges');
+    if (utilitiesFromPreviousMonth && prevMonth && prevYear) {
+        const prevMonthName = getMonthName(prevMonth - 1, language);
+        utilitiesHeader += ` (${prevMonthName} ${prevYear})`;
+        if (utilitiesProrated) {
+            utilitiesHeader += ` - ${language === 'sl' ? 'Sorazmerno' : 'Proportional'}`;
+        }
+    }
+    
+    PDF_UTILS.addStyledText(doc, utilitiesHeader, pageMargin, currentY, {
         fontSize: PDF_STYLES.fontSize.bodyLarge,
         color: PDF_STYLES.colors.primary,
         font: PDF_STYLES.fonts.secondary
@@ -203,8 +224,8 @@ function drawUtilitiesTableWithPaging(doc, startY, utilities, language = 'sl') {
     // 3-column table with total and tenant share
     const columns = [
         { header: t(language, 'pdf.utilityType'), key: 'utility_type', width: 140 },
-        { header: t(language, 'pdf.totalAmount'), key: 'total_amount', width: 90, align: 'right' },
-        { header: t(language, 'pdf.yourShare'), key: 'allocated_amount', width: 90, align: 'right', bold: true }
+        { header: t(language, 'pdf.totalAmount'), key: 'total_amount', width: 90, align: 'right', headerAlign: 'right' },
+        { header: t(language, 'pdf.yourShare'), key: 'allocated_amount', width: 90, align: 'right', headerAlign: 'right', bold: true }
     ];
     
     const tableData = utilities.map(utility => {

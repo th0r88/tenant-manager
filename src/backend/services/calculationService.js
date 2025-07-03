@@ -27,12 +27,15 @@ export function calculateAllocations(utilityEntryId) {
                 const allocations = [];
                 
                 if (utility.allocation_method === 'per_person') {
-                    const amountPerPerson = precisionMath.allocateUtilityPerPerson(utility.total_amount, tenants.length);
+                    const totalPeople = tenants.reduce((sum, tenant) => sum + (tenant.number_of_people || 1), 0);
+                    const amountPerPerson = precisionMath.allocateUtilityPerPerson(utility.total_amount, totalPeople);
                     tenants.forEach(tenant => {
+                        const tenantPeople = tenant.number_of_people || 1;
+                        const tenantAmount = precisionMath.multiply(amountPerPerson, tenantPeople);
                         allocations.push({
                             tenant_id: tenant.id,
                             utility_entry_id: utilityEntryId,
-                            allocated_amount: precisionMath.toNumber(amountPerPerson)
+                            allocated_amount: precisionMath.toNumber(tenantAmount)
                         });
                     });
                 } else if (utility.allocation_method === 'per_sqm') {

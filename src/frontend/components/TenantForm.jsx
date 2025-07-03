@@ -13,6 +13,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
         rent_amount: '',
         lease_duration: '',
         room_area: '',
+        number_of_people: 1,
         move_in_date: new Date().toISOString().split('T')[0],
         move_out_date: '',
         occupancy_status: 'active'
@@ -24,6 +25,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                 ...initialData,
                 move_in_date: initialData.move_in_date || new Date().toISOString().split('T')[0],
                 move_out_date: initialData.move_out_date || '',
+                number_of_people: initialData.number_of_people || 1,
                 occupancy_status: initialData.occupancy_status || 'active'
             });
         } else {
@@ -36,6 +38,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                 rent_amount: '',
                 lease_duration: '',
                 room_area: '',
+                number_of_people: 1,
                 move_in_date: new Date().toISOString().split('T')[0],
                 move_out_date: '',
                 occupancy_status: 'active'
@@ -48,6 +51,68 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
             checkCapacity();
         }
     }, [selectedProperty, initialData]);
+
+    const validateEMSO = (emso) => {
+        if (!emso || emso.trim() === '') return null;
+        
+        // Remove any spaces or non-digits
+        const cleanEmso = emso.replace(/\D/g, '');
+        
+        // Only validate length if user has entered some digits and seems to be done typing
+        if (cleanEmso.length > 0 && cleanEmso.length < 13) {
+            if (cleanEmso.length < 7) {
+                // Don't show error until they've entered at least some meaningful digits
+                return null;
+            }
+            return 'EMŠO mora imeti točno 13 številk';
+        }
+        
+        // EMŠO must be exactly 13 digits
+        if (cleanEmso.length !== 13) {
+            return 'EMŠO mora imeti točno 13 številk';
+        }
+        
+        // Check if first 7 digits represent a valid date (DDMMYYY)
+        const day = parseInt(cleanEmso.substring(0, 2));
+        const month = parseInt(cleanEmso.substring(2, 4));
+        const year = parseInt(cleanEmso.substring(4, 7));
+        
+        // Basic date validation
+        if (day < 1 || day > 31 || month < 1 || month > 12) {
+            return 'EMŠO vsebuje neveljaven datum rojstva';
+        }
+        
+        // Calculate checksum using EMŠO algorithm
+        const digits = cleanEmso.split('').map(Number);
+        const weights = [7, 6, 5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+        
+        let sum = 0;
+        for (let i = 0; i < 12; i++) {
+            sum += digits[i] * weights[i];
+        }
+        
+        const remainder = sum % 11;
+        let checkDigit;
+        
+        if (remainder === 0) {
+            checkDigit = 0;
+        } else if (remainder === 1) {
+            checkDigit = 1;
+        } else {
+            checkDigit = 11 - remainder;
+        }
+        
+        // Special case: if calculated check digit is 10, EMŠO is invalid
+        if (checkDigit === 10) {
+            return 'EMŠO ima napačno kontrolno števko';
+        }
+        
+        if (digits[12] !== checkDigit) {
+            return `EMŠO ima napačno kontrolno števko (pričakovana: ${checkDigit}, podana: ${digits[12]})`;
+        }
+        
+        return null;
+    };
 
     const validateDates = () => {
         const moveIn = new Date(formData.move_in_date);
@@ -94,7 +159,8 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
         e.preventDefault();
         const submissionData = {
             ...formData,
-            property_id: selectedProperty?.id || 1
+            property_id: selectedProperty?.id || 1,
+            move_out_date: formData.move_out_date || null
         };
         onSubmit(submissionData);
         if (!initialData?.id) {
@@ -106,7 +172,11 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                 tax_number: '',
                 rent_amount: '',
                 lease_duration: '',
-                room_area: ''
+                room_area: '',
+                number_of_people: 1,
+                move_in_date: new Date().toISOString().split('T')[0],
+                move_out_date: '',
+                occupancy_status: 'active'
             });
         }
     };
@@ -125,7 +195,11 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
             tax_number: '',
             rent_amount: '',
             lease_duration: '',
-            room_area: ''
+            room_area: '',
+            number_of_people: 1,
+            move_in_date: new Date().toISOString().split('T')[0],
+            move_out_date: '',
+            occupancy_status: 'active'
         });
     };
 
@@ -226,9 +300,16 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                                 name="emso" 
                                 value={formData.emso} 
                                 onChange={handleChange} 
-                                className="input input-bordered w-full" 
+                                className={`input input-bordered w-full ${validateEMSO(formData.emso) ? 'input-error' : ''}`}
+                                placeholder="0101970500111"
+                                maxLength="13"
                                 required 
                             />
+                            {validateEMSO(formData.emso) && (
+                                <label className="label">
+                                    <span className="label-text-alt text-error">{validateEMSO(formData.emso)}</span>
+                                </label>
+                            )}
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
@@ -251,6 +332,21 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                                 type="number" 
                                 step="any" 
                                 value={formData.rent_amount} 
+                                onChange={handleChange} 
+                                className="input input-bordered w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                required 
+                            />
+                        </div>
+                        <div className="form-control w-full">
+                            <label className="label">
+                                <span className="label-text text-right">{t('tenants.form.numberOfPeopleRequired')}</span>
+                            </label>
+                            <input 
+                                name="number_of_people" 
+                                type="number" 
+                                min="1"
+                                max="10"
+                                value={formData.number_of_people} 
                                 onChange={handleChange} 
                                 className="input input-bordered w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                 required 
@@ -347,7 +443,8 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                             className="btn btn-primary"
                             disabled={
                                 (!initialData?.id && selectedProperty?.capacity_status === 'at_capacity') ||
-                                validateDates() !== null
+                                validateDates() !== null ||
+                                validateEMSO(formData.emso) !== null
                             }
                         >
                             {initialData?.id ? t('tenants.form.updateTenant') : t('tenants.form.addTenant')}

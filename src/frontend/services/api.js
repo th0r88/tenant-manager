@@ -54,7 +54,10 @@ export const utilityApi = {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify(utility)
-    }).then(r => r.json()),
+    }).then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+        return r.json();
+    }),
     delete: (id) => fetch(`${API_BASE}/utilities/${id}`, {
         method: 'DELETE'
     }).then(r => r.json()),

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
 
-export default function UtilityForm({ onSubmit, initialData = {}, onCancel, selectedProperty }) {
+export default function UtilityForm({ onSubmit, initialData = {}, onCancel, selectedProperty, onUtilityAdded }) {
     const { t, getMonthNames, getUtilityTypes } = useTranslation();
     const [formData, setFormData] = useState({
         month: new Date().getMonth() + 1,
@@ -27,20 +27,31 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onSubmit({
+        const submittedData = {
             ...formData,
             month: parseInt(formData.month),
             year: parseInt(formData.year),
             total_amount: parseFloat(formData.total_amount),
             property_id: selectedProperty?.id || 1
-        });
-        setFormData({
-            month: new Date().getMonth() + 1,
-            year: new Date().getFullYear(),
-            utility_type: '',
-            total_amount: '',
-            allocation_method: 'per_person'
-        });
+        };
+        
+        onSubmit(submittedData);
+        
+        // Notify parent about the added utility for filter update
+        if (!initialData?.id && onUtilityAdded) {
+            onUtilityAdded(submittedData);
+        }
+        
+        // Keep the same month and year, reset other fields
+        if (!initialData?.id) {
+            setFormData({
+                month: formData.month, // Keep selected month
+                year: formData.year,   // Keep selected year
+                utility_type: '',
+                total_amount: '',
+                allocation_method: 'per_person'
+            });
+        }
     };
 
     const handleChange = (e) => {
@@ -130,7 +141,7 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                                 required
                             >
                                 <option value="per_person">{t('utilities.perPerson')}</option>
-                                <option value="per_square_meter">{t('utilities.perSquareMeter')}</option>
+                                <option value="per_sqm">{t('utilities.perSquareMeter')}</option>
                             </select>
                         </div>
                     </div>

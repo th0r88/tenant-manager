@@ -109,12 +109,12 @@ const missingKeyTracker = new Set();
 /**
  * Enhanced translation function with validation
  */
-export const validatedT = (i18n, key, fallback = '') => {
+export const validatedT = (i18n, key, options = '') => {
   if (!isDevelopment()) {
-    return i18n.t(key, fallback);
+    return i18n.t(key, options);
   }
   
-  const result = i18n.t(key);
+  const result = i18n.t(key, options);
   
   // Check if translation was found
   if (result === key && !keyExists(key, i18n.language)) {
@@ -124,7 +124,7 @@ export const validatedT = (i18n, key, fallback = '') => {
     }
   }
   
-  return result || fallback || key;
+  return result || (typeof options === 'string' ? options : '') || key;
 };
 
 /**

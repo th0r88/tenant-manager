@@ -92,10 +92,11 @@ export const calculateProportionalRent = (monthlyRent, moveInDate, moveOutDate, 
 export const calculatePersonDays = (tenants, year, month) => {
     return tenants.map(tenant => {
         const occupiedDays = calculateOccupiedDays(tenant.move_in_date, tenant.move_out_date, year, month);
+        const numberOfPeople = tenant.number_of_people || 1;
         return {
             ...tenant,
             occupiedDays,
-            personDays: occupiedDays // 1 person * occupied days
+            personDays: occupiedDays * numberOfPeople // number of people * occupied days
         };
     });
 };

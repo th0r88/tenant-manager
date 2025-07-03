@@ -24,7 +24,7 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                     <th>{t('common.name')}</th>
                                     <th>{t('common.rent')}</th>
                                     <th>{t('tenants.occupancy')}</th>
-                                    <th style={{ paddingLeft: '3.3rem' }}>{t('common.actions')}</th>
+                                    <th>{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -37,7 +37,7 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                             <div className="font-bold text-success text-sm">{formatCurrency(tenant.rent_amount)}{t('dashboard.perMonth')}</div>
                                         </td>
                                         <td>
-                                            <div className="text-center">
+                                            <div>
                                                 <div className={`badge badge-sm ${
                                                     tenant.occupancy_status === 'active' ? 'badge-success' :
                                                     tenant.occupancy_status === 'pending' ? 'badge-warning' : 'badge-error'
@@ -50,25 +50,13 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="text-right">
-                                            <div className="flex gap-2 justify-end">
+                                        <td>
+                                            <div className="flex gap-2">
                                                 <button 
                                                     className="btn btn-sm btn-info" 
                                                     onClick={() => setViewModal(tenant)}
                                                 >
                                                     {t('common.view')}
-                                                </button>
-                                                <button 
-                                                    className="btn btn-sm btn-outline" 
-                                                    onClick={() => onEdit(tenant)}
-                                                >
-                                                    {t('common.edit')}
-                                                </button>
-                                                <button 
-                                                    className="btn btn-sm btn-error" 
-                                                    onClick={() => setDeleteModal(tenant)}
-                                                >
-                                                    {t('common.delete')}
                                                 </button>
                                             </div>
                                         </td>
@@ -111,9 +99,17 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                                 <div>{tenant.room_area}m²</div>
                                             </div>
                                             <div>
+                                                <span className="font-medium opacity-70">{t('tenants.numberOfPeople')}:</span>
+                                                <div>{tenant.number_of_people || 1}</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
                                                 <span className="font-medium opacity-70">{t('tenants.lease')}:</span>
                                                 <div>{tenant.lease_duration} {t('tenants.months')}</div>
                                             </div>
+                                            <div></div>
                                         </div>
                                         
                                         <div className="mt-3">
@@ -137,22 +133,10 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                     
                                     <div className="flex gap-2 mt-4">
                                         <button 
-                                            className="btn btn-sm btn-info flex-1" 
+                                            className="btn btn-sm btn-info w-full" 
                                             onClick={() => setViewModal(tenant)}
                                         >
                                             {t('common.view')}
-                                        </button>
-                                        <button 
-                                            className="btn btn-sm btn-outline flex-1" 
-                                            onClick={() => onEdit(tenant)}
-                                        >
-                                            {t('common.edit')}
-                                        </button>
-                                        <button 
-                                            className="btn btn-sm btn-error flex-1" 
-                                            onClick={() => setDeleteModal(tenant)}
-                                        >
-                                            {t('common.delete')}
                                         </button>
                                     </div>
                                 </div>
@@ -211,6 +195,11 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                 </div>
                                 
                                 <div>
+                                    <label className="text-sm font-medium opacity-70">{t('tenants.numberOfPeople')}</label>
+                                    <div>{viewModal.number_of_people || 1}</div>
+                                </div>
+                                
+                                <div>
                                     <label className="text-sm font-medium opacity-70">{t('tenants.lease')}</label>
                                     <div>{viewModal.lease_duration} {t('tenants.months')}</div>
                                 </div>
@@ -245,6 +234,15 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                             >
                                 {t('common.edit')}
                             </button>
+                            <button 
+                                className="btn btn-error" 
+                                onClick={() => {
+                                    setViewModal(null);
+                                    setDeleteModal(viewModal);
+                                }}
+                            >
+                                {t('common.delete')}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -256,7 +254,7 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                     <div className="modal-box">
                         <h3 className="font-bold text-lg">{t('tenants.deleteTenant')}</h3>
                         <p className="py-4">
-                            {t('tenants.confirmDelete', { name: `${deleteModal.name} ${deleteModal.surname}` })}
+                            {t('tenants.confirmDelete')}
                         </p>
                         <div className="modal-action">
                             <button 

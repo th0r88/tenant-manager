@@ -27,7 +27,7 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', validateTenant, (req, res) => {
-    const { property_id = 1, name, surname, address, emso, tax_number, rent_amount, lease_duration, room_area, move_in_date, move_out_date, occupancy_status } = req.body;
+    const { property_id = 1, name, surname, address, emso, tax_number, rent_amount, lease_duration, room_area, number_of_people = 1, move_in_date, move_out_date, occupancy_status } = req.body;
     
     // Check property capacity before adding tenant
     getPropertyCapacity(property_id, (err, property) => {
@@ -58,8 +58,8 @@ router.post('/', validateTenant, (req, res) => {
     
     function insertTenant() {
         db.run(
-            'INSERT INTO tenants (property_id, name, surname, address, emso, tax_number, rent_amount, lease_duration, room_area, move_in_date, move_out_date, occupancy_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [property_id, name, surname, address, emso, tax_number, rent_amount, lease_duration, room_area, move_in_date || new Date().toISOString().split('T')[0], move_out_date || null, occupancy_status || 'active'],
+            'INSERT INTO tenants (property_id, name, surname, address, emso, tax_number, rent_amount, lease_duration, room_area, number_of_people, move_in_date, move_out_date, occupancy_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [property_id, name, surname, address, emso, tax_number, rent_amount, lease_duration, room_area, number_of_people, move_in_date || new Date().toISOString().split('T')[0], move_out_date || null, occupancy_status || 'active'],
             async function(err) {
                 if (err) return res.status(400).json({ error: err.message });
                 
@@ -85,7 +85,7 @@ router.post('/', validateTenant, (req, res) => {
 });
 
 router.put('/:id', (req, res) => {
-    const { name, surname, address, emso, tax_number, rent_amount, lease_duration, room_area, move_in_date, move_out_date, occupancy_status } = req.body;
+    const { name, surname, address, emso, tax_number, rent_amount, lease_duration, room_area, number_of_people, move_in_date, move_out_date, occupancy_status } = req.body;
     
     // Get previous tenant data for tracking changes
     db.get('SELECT * FROM tenants WHERE id = ?', [req.params.id], async (err, previousData) => {
@@ -93,8 +93,8 @@ router.put('/:id', (req, res) => {
         if (!previousData) return res.status(404).json({ error: 'Tenant not found' });
         
         db.run(
-            'UPDATE tenants SET name=?, surname=?, address=?, emso=?, tax_number=?, rent_amount=?, lease_duration=?, room_area=?, move_in_date=?, move_out_date=?, occupancy_status=? WHERE id=?',
-            [name, surname, address, emso, tax_number, rent_amount, lease_duration, room_area, move_in_date, move_out_date, occupancy_status, req.params.id],
+            'UPDATE tenants SET name=?, surname=?, address=?, emso=?, tax_number=?, rent_amount=?, lease_duration=?, room_area=?, number_of_people=?, move_in_date=?, move_out_date=?, occupancy_status=? WHERE id=?',
+            [name, surname, address, emso, tax_number, rent_amount, lease_duration, room_area, number_of_people, move_in_date, move_out_date, occupancy_status, req.params.id],
             async function(err) {
                 if (err) return res.status(400).json({ error: err.message });
                 
