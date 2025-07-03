@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS tenants (
     rent_amount REAL NOT NULL,
     lease_duration INTEGER NOT NULL,
     room_area REAL NOT NULL,
+    number_of_people INTEGER NOT NULL DEFAULT 1,
     move_in_date DATE NOT NULL DEFAULT (date('now')),
     move_out_date DATE,
     occupancy_status TEXT NOT NULL DEFAULT 'active' CHECK (occupancy_status IN ('active', 'moved_out', 'pending')),

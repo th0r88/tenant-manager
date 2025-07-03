@@ -107,6 +107,12 @@ export class ValidationMiddleware {
                     max: 1000,
                     precision: 2
                 },
+                number_of_people: {
+                    required: true,
+                    type: 'integer',
+                    min: 1,
+                    max: 10
+                },
                 move_in_date: {
                     required: true,
                     type: 'date',

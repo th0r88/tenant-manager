@@ -12,8 +12,6 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
     const [loading, setLoading] = useState(false);
     const [pdfLanguage, setPdfLanguage] = useState(currentLanguage || 'sl');
     const [reportFilter, setReportFilter] = useState({
-        month: new Date().getMonth() + 1,
-        year: new Date().getFullYear(),
         tenant: ''
     });
     const [downloadingPdfs, setDownloadingPdfs] = useState(new Set());
@@ -81,11 +79,8 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
             <div className="card bg-base-100 shadow-xl">
                 <div className="card-body">
                     <h3 className="card-title">{t('reports.selectPeriod')}</h3>
-                    <div className="flex gap-2 w-full">
-                        <div className="form-control flex-1">
-                            <label className="label">
-                                <span className="label-text">{t('reports.month')}</span>
-                            </label>
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div className="form-control w-full">
                             <select 
                                 className="select select-bordered w-full" 
                                 value={month} 
@@ -98,10 +93,7 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                 ))}
                             </select>
                         </div>
-                        <div className="form-control flex-1">
-                            <label className="label">
-                                <span className="label-text">{t('reports.year')}</span>
-                            </label>
+                        <div className="form-control w-full">
                             <select 
                                 className="select select-bordered w-full"
                                 value={year} 
@@ -112,10 +104,21 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                 ))}
                             </select>
                         </div>
-                        <div className="form-control flex-1">
-                            <label className="label">
-                                <span className="label-text">{t('reports.pdfLanguage')}</span>
-                            </label>
+                        <div className="form-control w-full">
+                            <select 
+                                value={reportFilter.tenant} 
+                                onChange={(e) => setReportFilter({...reportFilter, tenant: e.target.value})}
+                                className="select select-bordered w-full"
+                            >
+                                <option value="">{t('reports.allTenants')}</option>
+                                {tenants && tenants.map((tenant) => (
+                                    <option key={tenant.id} value={tenant.id}>
+                                        {tenant.name} {tenant.surname}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="form-control w-full">
                             <select 
                                 className="select select-bordered w-full"
                                 value={pdfLanguage} 
@@ -125,72 +128,20 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                 <option value="en">🇬🇧 {t('language.english')}</option>
                             </select>
                         </div>
+                        <div className="form-control w-full">
+                            <button 
+                                className="btn btn-outline"
+                                onClick={() => setReportFilter({tenant: ''})}
+                            >
+                                {t('reports.clearFilters')}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
             
             <div className="card bg-base-100 shadow-xl">
                 <div className="card-body">
-                    <h3 className="card-title">{t('reports.reportSummaryTitle')}</h3>
-                    
-                    {/* Filter Controls */}
-                    <div className="card bg-base-100 shadow-md mb-4">
-                        <div className="card-body p-4">
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="form-control w-full">
-                                    <select 
-                                        value={reportFilter.month} 
-                                        onChange={(e) => setReportFilter({...reportFilter, month: parseInt(e.target.value)})}
-                                        className="select select-bordered w-full"
-                                    >
-                                        <option value="">{t('reports.allMonths')}</option>
-                                        {getMonthNames().map((monthName, i) => (
-                                            <option key={i + 1} value={i + 1}>
-                                                {monthName}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="form-control w-full">
-                                    <select 
-                                        value={reportFilter.year} 
-                                        onChange={(e) => setReportFilter({...reportFilter, year: parseInt(e.target.value)})}
-                                        className="select select-bordered w-full"
-                                    >
-                                        <option value="">{t('reports.allYears')}</option>
-                                        {Array.from({ length: 26 }, (_, i) => 2025 + i)
-                                            .sort((a, b) => b - a)
-                                            .map(year => (
-                                                <option key={year} value={year}>{year}</option>
-                                            ))
-                                        }
-                                    </select>
-                                </div>
-                                <div className="form-control w-full">
-                                    <select 
-                                        value={reportFilter.tenant} 
-                                        onChange={(e) => setReportFilter({...reportFilter, tenant: e.target.value})}
-                                        className="select select-bordered w-full"
-                                    >
-                                        <option value="">{t('reports.allTenants')}</option>
-                                        {tenants && tenants.map((tenant) => (
-                                            <option key={tenant.id} value={tenant.id}>
-                                                {tenant.name} {tenant.surname}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="form-control w-full">
-                                    <button 
-                                        className="btn btn-outline"
-                                        onClick={() => setReportFilter({month: '', year: '', tenant: ''})}
-                                    >
-                                        {t('reports.clearFilters')}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                     {loading ? (
                         <div className="flex items-center justify-center py-8">
                             <span className="loading loading-spinner loading-md"></span>
@@ -202,10 +153,8 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                         </div>
                     ) : (() => {
                         const filteredSummary = summary.filter(tenant => {
-                            const monthMatch = !reportFilter.month || month === reportFilter.month;
-                            const yearMatch = !reportFilter.year || year === reportFilter.year;
                             const tenantMatch = !reportFilter.tenant || tenant.id.toString() === reportFilter.tenant;
-                            return monthMatch && yearMatch && tenantMatch;
+                            return tenantMatch;
                         });
 
                         return filteredSummary.length === 0 ? (
@@ -216,12 +165,12 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                         ) : (
                             <div>
                                 {/* Batch Actions Bar */}
-                                <div className="bg-base-200 p-4 rounded-lg mb-4 flex flex-wrap gap-4 items-center justify-between">
+                                <div className="bg-base-200 p-4 rounded-lg mb-4 flex flex-wrap gap-4 items-center justify-between min-h-[4rem]">
                                     <div className="flex items-center gap-4">
                                         <label className="label cursor-pointer">
                                             <input 
                                                 type="checkbox" 
-                                                className="checkbox checkbox-primary" 
+                                                className="checkbox checkbox-info" 
                                                 checked={selectedTenants.size === filteredSummary.length && filteredSummary.length > 0}
                                                 onChange={() => handleSelectAll(filteredSummary)}
                                             />
@@ -230,10 +179,10 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                             </span>
                                         </label>
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 min-h-[2rem]">
                                         {selectedTenants.size > 0 && (
                                             <button 
-                                                className="btn btn-primary btn-sm"
+                                                className="btn btn-info btn-sm"
                                                 onClick={() => setShowBatchModal(true)}
                                             >
                                                 📦 {t('reports.exportAsZip')} {selectedTenants.size} {t('reports.reportsCount')}
@@ -249,7 +198,7 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                                 <th className="w-12">
                                                     <input 
                                                         type="checkbox" 
-                                                        className="checkbox checkbox-primary checkbox-sm" 
+                                                        className="checkbox checkbox-info checkbox-sm" 
                                                         checked={selectedTenants.size === filteredSummary.length && filteredSummary.length > 0}
                                                         onChange={() => handleSelectAll(filteredSummary)}
                                                     />
@@ -267,7 +216,7 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                                 <td className="w-12">
                                                     <input 
                                                         type="checkbox" 
-                                                        className="checkbox checkbox-primary checkbox-sm" 
+                                                        className="checkbox checkbox-info checkbox-sm" 
                                                         checked={selectedTenants.has(tenant.id)}
                                                         onChange={(e) => handleTenantSelection(tenant.id, e.target.checked)}
                                                     />
@@ -282,13 +231,14 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                                     <div className="font-medium">{formatCurrency(tenant.utilities_total)}</div>
                                                 </td>
                                                 <td className="w-1/5">
-                                                    <div className="font-bold text-primary">{formatCurrency(tenant.total_due)}</div>
+                                                    <div className="font-bold text-info">{formatCurrency(tenant.total_due)}</div>
                                                 </td>
                                                 <td className="w-1/6">
                                                     <DownloadButton 
                                                         onDownload={() => handleDownloadPdf(tenant.id)}
                                                         isLoading={downloadingPdfs.has(tenant.id)}
                                                         tenantName={`${tenant.name} ${tenant.surname}`}
+                                                        variant="info"
                                                     />
                                                 </td>
                                             </tr>

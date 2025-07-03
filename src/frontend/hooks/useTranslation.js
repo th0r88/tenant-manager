@@ -12,7 +12,8 @@ export const useTranslation = (namespace) => {
   
   // Enhanced translation function with validation in development
   const t = (key, options) => {
-    return validatedT(i18n, key, options?.defaultValue || options);
+    // Use original react-i18next function directly for interpolation
+    return originalT(key, options);
   };
 
   // Helper function to get translated utility types
@@ -21,12 +22,18 @@ export const useTranslation = (namespace) => {
       { key: 'electricity', label: t('utilities.types.electricity') },
       { key: 'water', label: t('utilities.types.water') },
       { key: 'heating', label: t('utilities.types.heating') },
+      { key: 'tv_rtv', label: t('utilities.types.tv_rtv') },
+      { key: 'cleaning', label: t('utilities.types.cleaning') },
       { key: 'internet', label: t('utilities.types.internet') },
       { key: 'maintenance', label: t('utilities.types.maintenance') },
       { key: 'gas', label: t('utilities.types.gas') },
-      { key: 'waste', label: t('utilities.types.waste') },
-      { key: 'cleaning', label: t('utilities.types.cleaning') }
+      { key: 'waste', label: t('utilities.types.waste') }
     ];
+  };
+
+  // Helper function to translate a single utility type
+  const translateUtilityType = (utilityType) => {
+    return t(`utilities.types.${utilityType}`) || utilityType;
   };
 
   // Helper function to format dates according to current language
@@ -112,6 +119,7 @@ export const useTranslation = (namespace) => {
     currentLanguage,
     changeLanguage,
     getUtilityTypes,
+    translateUtilityType,
     formatDate,
     formatCurrency,
     formatNumber,

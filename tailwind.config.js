@@ -10,6 +10,6 @@ export default {
     require('daisyui'),
   ],
   daisyui: {
-    themes: ["business"],
+    themes: ["business", "light"],
   },
 }
