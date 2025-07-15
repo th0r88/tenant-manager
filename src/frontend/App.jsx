@@ -266,62 +266,66 @@ function AppContent() {
                             {/* Desktop Language and Property Selectors */}
                             <div className="hidden lg:flex items-center space-x-4">
                             <LanguageSelector />
-                            <div className="dropdown dropdown-end group">
-                            <div 
-                                tabIndex={0} 
-                                role="button" 
-                                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-base-content bg-base-100 border border-base-300 rounded-md hover:bg-base-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                                onClick={(e) => {
-                                    e.currentTarget.focus();
-                                    setIsPropertyDropdownOpen(true);
-                                }}
-                                onFocus={() => setIsPropertyDropdownOpen(true)}
-                                onBlur={() => setTimeout(() => setIsPropertyDropdownOpen(false), 150)}
-                            >
-                                <span className="text-lg">🏠</span>
-                                <span className="max-w-40 truncate">{selectedProperty ? `${selectedProperty.name}` : t('properties.selectProperty', 'Select Property')}</span>
-                                <svg className={`w-4 h-4 transition-transform ${isPropertyDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </div>
-                            <ul tabIndex={0} className="dropdown-content menu bg-base-100 border border-base-300 rounded-md shadow-lg z-[1] w-80 p-1">
-                                {properties.map(property => (
-                                    <li key={property.id}>
-                                        <button
-                                            onClick={() => {
-                                                setSelectedProperty(property);
-                                                localStorage.setItem('selectedPropertyId', property.id.toString());
-                                                setIsPropertyDropdownOpen(false);
-                                            }}
-                                            className={`flex flex-col items-start w-full px-4 py-3 text-sm text-left hover:bg-base-200 rounded-md ${
-                                                selectedProperty?.id === property.id
-                                                    ? 'bg-primary/10 text-primary'
-                                                    : 'text-base-content'
-                                            }`}
-                                        >
-                                            <div className="font-semibold">{property.name}</div>
-                                            <div className="text-xs text-base-content/70 mt-1">{property.address}</div>
-                                            {selectedProperty?.id === property.id && (
-                                                <svg className="w-4 h-4 ml-auto text-primary absolute right-2 top-1/2 transform -translate-y-1/2" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                                </svg>
-                                            )}
-                                        </button>
-                                    </li>
-                                ))}
-                                <div className="border-t border-base-300 my-1"></div>
-                                <li>
-                                    <button
-                                        onClick={() => {
-                                            changeTab('properties');
-                                            setIsPropertyDropdownOpen(false);
-                                        }}
-                                        className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-primary-content bg-primary hover:bg-primary/90 rounded-md"
-                                    >
-                                        {t('properties.title')}
-                                    </button>
-                                </li>
-                            </ul>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsPropertyDropdownOpen(!isPropertyDropdownOpen)}
+                                    className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-base-content bg-base-100 border border-base-300 rounded-md hover:bg-base-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                                >
+                                    <span className="text-lg">🏠</span>
+                                    <span className="max-w-40 truncate">{selectedProperty ? `${selectedProperty.name}` : t('properties.selectProperty', 'Select Property')}</span>
+                                    <svg className={`w-4 h-4 transition-transform ${isPropertyDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                
+                                {isPropertyDropdownOpen && (
+                                    <>
+                                        {/* Backdrop */}
+                                        <div 
+                                            className="fixed inset-0 z-10"
+                                            onClick={() => setIsPropertyDropdownOpen(false)}
+                                        />
+                                        
+                                        {/* Dropdown */}
+                                        <div className="absolute right-0 z-20 mt-2 w-80 bg-base-100 border border-base-300 rounded-md shadow-lg">
+                                            <div className="py-1">
+                                                {properties.map(property => (
+                                                    <button
+                                                        key={property.id}
+                                                        onClick={() => {
+                                                            setSelectedProperty(property);
+                                                            localStorage.setItem('selectedPropertyId', property.id.toString());
+                                                            setIsPropertyDropdownOpen(false);
+                                                        }}
+                                                        className={`flex flex-col items-start w-full px-4 py-3 text-sm text-left hover:bg-base-200 ${
+                                                            selectedProperty?.id === property.id
+                                                                ? 'bg-primary/10 text-primary'
+                                                                : 'text-base-content'
+                                                        }`}
+                                                    >
+                                                        <div className="font-semibold">{property.name}</div>
+                                                        <div className="text-xs text-base-content/70 mt-1">{property.address}</div>
+                                                        {selectedProperty?.id === property.id && (
+                                                            <svg className="w-4 h-4 ml-auto text-primary absolute right-2 top-1/2 transform -translate-y-1/2" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                            </svg>
+                                                        )}
+                                                    </button>
+                                                ))}
+                                                <div className="border-t border-base-300 my-1"></div>
+                                                <button
+                                                    onClick={() => {
+                                                        changeTab('properties');
+                                                        setIsPropertyDropdownOpen(false);
+                                                    }}
+                                                    className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-primary-content bg-primary hover:bg-primary/90 rounded-md mx-1"
+                                                >
+                                                    {t('properties.title')}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                             </div>
                         </div>
