@@ -1,15 +1,35 @@
-# Deployment Guide - Tenant Management System 1.0
+# Production Deployment Guide - Tenant Management System 1.1
 
-This guide covers deploying the tenant management system in a homelab environment with production-grade reliability and security hardening.
+This guide covers deploying the tenant management system with containerized SQLite database in production environments, including homelab setups with enterprise-grade reliability and security hardening.
 
 ## Prerequisites
 
-- Node.js 18+ (LTS recommended)
-- npm 8+
-- SQLite 3
-- Git
+### System Requirements
+- **Operating System**: Linux (Ubuntu 20.04+), macOS, or Windows with WSL2
+- **Docker**: Version 20.10 or higher
+- **Docker Compose**: Version 1.29 or higher
+- **Node.js**: Version 18+ (LTS recommended)
+- **Memory**: Minimum 2GB RAM, recommended 4GB+
+- **Storage**: Minimum 10GB free space
+- **Network**: Ports 5999 (application) and 5998 (database management)
 
-## Quick Start
+### Software Dependencies
+```bash
+# Install Docker (Ubuntu/Debian)
+sudo apt-get update
+sudo apt-get install docker.io docker-compose
+
+# Install Node.js
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Verify installations
+docker --version
+docker-compose --version
+node --version
+```
+
+## Quick Start (Containerized Deployment)
 
 ### 1. Clone and Setup
 
@@ -19,22 +39,53 @@ cd tennants
 npm install
 ```
 
-### 2. Configuration
+### 2. Configure Environment
 
-Copy environment configuration:
 ```bash
-cp .env.example .env
-cp config.json.example config.json
+# Set environment variables for containerized deployment
+export DATABASE_TYPE=http
+export DATABASE_HOST=sqlite-db
+export DATABASE_PORT=8080
+export DATABASE_NAME=tenant_manager.db
+export DATABASE_USER=tenant_user
+export DATABASE_PASSWORD=secure_password_here
+export NODE_ENV=production
+export PORT=5999
 ```
 
-Edit `.env` for your environment:
+### 3. Deploy with Zero Downtime
+
+```bash
+# Make deployment script executable
+chmod +x deploy-production.sh
+
+# Run full production deployment
+./deploy-production.sh deploy
+```
+
+### 4. Verify Deployment
+
+```bash
+# Check application health
+curl http://localhost:5999/api/health
+
+# Run post-deployment tests
+./deploy-production.sh test
+```
+
+## Legacy Deployment (File-based Database)
+
+For backwards compatibility, file-based deployment is still supported:
+
+### 1. Environment Configuration
 ```bash
 # Server Configuration
 NODE_ENV=production
-PORT=3001
+PORT=5999
 HOST=0.0.0.0
 
-# Database Configuration
+# Database Configuration (File-based)
+DATABASE_TYPE=file
 DATABASE_PATH=tenant_manager.db
 
 # Backup Configuration
@@ -43,19 +94,14 @@ BACKUP_INTERVAL=24
 # Logging Configuration
 LOG_LEVEL=info
 LOG_TO_FILE=true
-
-# Health Check Configuration
-HEALTH_CHECK_INTERVAL=300000
 ```
 
-### 3. Initialize Database
-
+### 2. Initialize Database
 ```bash
 npm run setup-db
 ```
 
-### 4. Start Production Server
-
+### 3. Start Production Server
 ```bash
 npm run start:prod
 ```

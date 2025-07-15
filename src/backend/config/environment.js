@@ -31,9 +31,23 @@ export class EnvironmentConfig {
                 }
             },
             database: {
+                type: 'file', // 'file' or 'http'
                 path: 'tenant_manager.db',
+                host: 'localhost',
+                port: 8080,
+                name: 'tenant_manager.db',
+                user: '',
+                password: '',
                 timeout: 30000,
                 busyTimeout: 30000,
+                retries: 3,
+                retryDelay: 1000,
+                pool: {
+                    max: 10,
+                    min: 2,
+                    idle: 30000,
+                    acquire: 60000
+                },
                 backup: {
                     enabled: false, // Temporarily disabled due to SIGSEGV
                     interval: 24, // hours
@@ -112,8 +126,26 @@ export class EnvironmentConfig {
         }
 
         // Database configuration
+        if (process.env.DATABASE_TYPE) {
+            envConfig.database = { type: process.env.DATABASE_TYPE };
+        }
         if (process.env.DATABASE_PATH) {
-            envConfig.database = { path: process.env.DATABASE_PATH };
+            envConfig.database = { ...envConfig.database, path: process.env.DATABASE_PATH };
+        }
+        if (process.env.DATABASE_HOST) {
+            envConfig.database = { ...envConfig.database, host: process.env.DATABASE_HOST };
+        }
+        if (process.env.DATABASE_PORT) {
+            envConfig.database = { ...envConfig.database, port: parseInt(process.env.DATABASE_PORT) };
+        }
+        if (process.env.DATABASE_NAME) {
+            envConfig.database = { ...envConfig.database, name: process.env.DATABASE_NAME };
+        }
+        if (process.env.DATABASE_USER) {
+            envConfig.database = { ...envConfig.database, user: process.env.DATABASE_USER };
+        }
+        if (process.env.DATABASE_PASSWORD) {
+            envConfig.database = { ...envConfig.database, password: process.env.DATABASE_PASSWORD };
         }
         if (process.env.BACKUP_INTERVAL) {
             envConfig.database = { 

@@ -1,6 +1,6 @@
 {
   "name": "tenant-manager",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "archiver": "^7.0.1",
+    "axios": "^1.6.0",
     "cors": "^2.8.5",
     "daisyui": "^5.0.43",
     "decimal.js": "^10.5.0",
