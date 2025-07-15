@@ -118,7 +118,29 @@
     },
     "validation": {
       "moveOutAfterMoveIn": "Move-out date must be after move-in date",
-      "moveInNotFuture": "Move-in date cannot be in the future for new tenants"
+      "moveInTooFarFuture": "Move-in date cannot be more than 3 months in the future",
+      "required": "{{field}} is required",
+      "minLength": "{{field}} must be at least {{min}} characters long",
+      "maxLength": "{{field}} must be at most {{max}} characters long",
+      "invalidNumber": "{{field}} must be a valid number",
+      "mustBeInteger": "{{field}} must be a whole number",
+      "minValue": "{{field}} must be at least {{min}}",
+      "maxValue": "{{field}} must be at most {{max}}",
+      "fields": {
+        "name": "Name",
+        "surname": "Surname",
+        "address": "Address",
+        "tax_number": "Tax Number",
+        "rent_amount": "Rent Amount",
+        "lease_duration": "Lease Duration",
+        "room_area": "Room Area",
+        "number_of_people": "Number of People"
+      },
+      "pattern": {
+        "name": "Name can only contain letters, spaces, and basic punctuation",
+        "surname": "Surname can only contain letters, spaces, and basic punctuation",
+        "tax_number": "Tax Number can only contain uppercase letters and numbers"
+      }
     },
     "capacity": {
       "atCapacity": "Property is at capacity ({current}/{max}). Cannot add new tenant.",

@@ -98,7 +98,7 @@
     "moveOutDate": "Datum odselitve",
     "rentAmount": "Višina najemnine",
     "roomArea": "Površina sobe",
-    "numberOfPeople": "Število ljudi",
+    "numberOfPeople": "Število prebivalcev",
     "emso": "EMŠO",
     "taxNumber": "Davčna številka",
     "surname": "Priimek",
@@ -118,7 +118,29 @@
     },
     "validation": {
       "moveOutAfterMoveIn": "Datum odselitve mora biti po datumu vselitve",
-      "moveInNotFuture": "Datum vselitve ne more biti v prihodnosti za nove podnajemnike"
+      "moveInTooFarFuture": "Datum vselitve ne more biti več kot 3 mesece v prihodnosti",
+      "required": "{{field}} je obvezno",
+      "minLength": "{{field}} mora imeti vsaj {{min}} znakov",
+      "maxLength": "{{field}} lahko ima največ {{max}} znakov",
+      "invalidNumber": "{{field}} mora biti veljavna številka",
+      "mustBeInteger": "{{field}} mora biti celo število",
+      "minValue": "{{field}} mora biti vsaj {{min}}",
+      "maxValue": "{{field}} može biti največ {{max}}",
+      "fields": {
+        "name": "Ime",
+        "surname": "Priimek",
+        "address": "Naslov",
+        "tax_number": "Davčna številka",
+        "rent_amount": "Višina najemnine",
+        "lease_duration": "Trajanje najema",
+        "room_area": "Površina sobe",
+        "number_of_people": "Število ljudi"
+      },
+      "pattern": {
+        "name": "Ime lahko vsebuje samo črke, presledke in osnovno ločila",
+        "surname": "Priimek lahko vsebuje samo črke, presledke in osnovno ločila",
+        "tax_number": "Davčna številka lahko vsebuje samo velike črke in številke"
+      }
     },
     "capacity": {
       "atCapacity": "Nepremičnina je polno zasedena ({current}/{max}). Ni možno dodati novega podnajemnika.",
@@ -155,7 +177,6 @@
     "totalArea": "Skupna površina",
     "maxTenants": "Največ podnajemnikov",
     "selectProperty": "Izberi nepremičnino",
-    "editProperty": "Uredi nepremičnino",
     "addNewProperty": "Dodaj novo nepremičnino",
     "propertyNameRequired": "Ime nepremičnine *",
     "propertyNamePlaceholder": "npr., Glavna stavba, Stanovanjski kompleks A",
