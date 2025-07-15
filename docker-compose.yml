@@ -1,42 +1,18 @@
 services:
-  sqlite-db:
-    image: keinos/sqlite3:latest
-    container_name: sqlite-db
-    restart: unless-stopped
-    environment:
-      - SQLITE_DATABASE=/data/tenant_manager.db
-      - SQLITE_USER=tenant_user
-      - SQLITE_PASSWORD=tenant_pass
-    volumes:
-      - sqlite-data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    networks:
-      - tenant-network
-    ports:
-      - "5998:8080"
-
   tenant-manager:
     image: jferme/tenant-manager:latest
-    container_name: tenant-manager
+    container_name: tenant-manager-homelab
     restart: unless-stopped
     ports:
       - "5999:5999"
     environment:
       - NODE_ENV=production
-      - DATABASE_TYPE=http
-      - DATABASE_HOST=sqlite-db
-      - DATABASE_PORT=8080
-      - DATABASE_NAME=tenant_manager.db
-      - DATABASE_USER=tenant_user
-      - DATABASE_PASSWORD=tenant_pass
+      - DATABASE_TYPE=file
+      - DATABASE_PATH=/data/tenant_manager.db
       - LOG_LEVEL=info
       - BACKUP_INTERVAL=24
     volumes:
+      - sqlite-data:/data
       - tenant-backups:/app/backups
       - tenant-logs:/app/logs
       - tenant-alerts:/app/alerts
@@ -48,9 +24,6 @@ services:
       start_period: 60s
     networks:
       - tenant-network
-    depends_on:
-      sqlite-db:
-        condition: service_healthy
 
 networks:
   tenant-network:
