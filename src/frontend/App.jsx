@@ -23,6 +23,13 @@ function AppContent() {
     const [editing, setEditing] = useState(null);
     const [editingUtility, setEditingUtility] = useState(null);
     const [activeTab, setActiveTab] = useState('dashboard');
+
+    // Helper function to change tab with hash and localStorage persistence
+    const changeTab = (tab) => {
+        setActiveTab(tab);
+        window.location.hash = tab;
+        localStorage.setItem('activeTab', tab);
+    };
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [successVisible, setSuccessVisible] = useState(false);
@@ -40,7 +47,37 @@ function AppContent() {
             VITE_API_BASE: import.meta.env.VITE_API_BASE,
             all: import.meta.env
         });
+        
+        // Restore active tab from URL hash or localStorage
+        const hash = window.location.hash.slice(1);
+        const savedTab = localStorage.getItem('activeTab');
+        const restoredTab = hash || savedTab || 'dashboard';
+        
+        // Validate tab exists
+        const validTabs = ['dashboard', 'tenants', 'utilities', 'reports', 'properties'];
+        if (validTabs.includes(restoredTab)) {
+            setActiveTab(restoredTab);
+            if (!hash && restoredTab !== 'dashboard') {
+                window.location.hash = restoredTab;
+            }
+        }
+        
         loadProperties();
+    }, []);
+
+    // Handle browser back/forward navigation
+    useEffect(() => {
+        const handleHashChange = () => {
+            const hash = window.location.hash.slice(1);
+            const validTabs = ['dashboard', 'tenants', 'utilities', 'reports', 'properties'];
+            if (validTabs.includes(hash)) {
+                setActiveTab(hash);
+                localStorage.setItem('activeTab', hash);
+            }
+        };
+
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
     }, []);
 
     useEffect(() => {
@@ -74,7 +111,22 @@ function AppContent() {
             const data = await propertyApi.getAll();
             setProperties(data);
             if (data.length > 0 && !selectedProperty) {
-                setSelectedProperty(data[0]);
+                // Try to restore saved property selection from localStorage
+                const savedPropertyId = localStorage.getItem('selectedPropertyId');
+                if (savedPropertyId) {
+                    const savedProperty = data.find(prop => prop.id === parseInt(savedPropertyId));
+                    if (savedProperty) {
+                        setSelectedProperty(savedProperty);
+                    } else {
+                        // If saved property doesn't exist, select first property
+                        setSelectedProperty(data[0]);
+                        localStorage.setItem('selectedPropertyId', data[0].id.toString());
+                    }
+                } else {
+                    // No saved selection, select first property
+                    setSelectedProperty(data[0]);
+                    localStorage.setItem('selectedPropertyId', data[0].id.toString());
+                }
             }
         } catch (err) {
             console.error('Error loading properties:', err);
@@ -175,7 +227,7 @@ function AppContent() {
 
     const handleEdit = (tenant) => {
         setEditing(tenant);
-        setActiveTab('tenants');
+        changeTab('tenants');
         clearMessages();
     };
 
@@ -238,6 +290,7 @@ function AppContent() {
                                         <button
                                             onClick={() => {
                                                 setSelectedProperty(property);
+                                                localStorage.setItem('selectedPropertyId', property.id.toString());
                                                 setIsPropertyDropdownOpen(false);
                                             }}
                                             className={`flex flex-col items-start w-full px-4 py-3 text-sm text-left hover:bg-base-200 rounded-md ${
@@ -260,7 +313,7 @@ function AppContent() {
                                 <li>
                                     <button
                                         onClick={() => {
-                                            setActiveTab('properties');
+                                            changeTab('properties');
                                             setIsPropertyDropdownOpen(false);
                                         }}
                                         className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-primary-content bg-primary hover:bg-primary/90 rounded-md"
@@ -326,7 +379,7 @@ function AppContent() {
                                     ? '3px solid' 
                                     : '3px solid'
                             }}
-                            onClick={() => setActiveTab('dashboard')}
+                            onClick={() => changeTab('dashboard')}
                         >
                             <span>{t('navigation.dashboard')}</span>
                         </button>
@@ -348,7 +401,7 @@ function AppContent() {
                                         ? '3px solid'
                                         : '3px solid'
                             }}
-                            onClick={() => selectedProperty && setActiveTab('tenants')}
+                            onClick={() => selectedProperty && changeTab('tenants')}
                             disabled={!selectedProperty}
                         >
                             <span>{t('navigation.tenants')}</span>
@@ -371,7 +424,7 @@ function AppContent() {
                                         ? '3px solid'
                                         : '3px solid'
                             }}
-                            onClick={() => selectedProperty && setActiveTab('utilities')}
+                            onClick={() => selectedProperty && changeTab('utilities')}
                             disabled={!selectedProperty}
                         >
                             <span>{t('navigation.utilities')}</span>
@@ -394,7 +447,7 @@ function AppContent() {
                                         ? '3px solid'
                                         : '3px solid'
                             }}
-                            onClick={() => selectedProperty && setActiveTab('reports')}
+                            onClick={() => selectedProperty && changeTab('reports')}
                             disabled={!selectedProperty}
                         >
                             <span>{t('navigation.reports')}</span>
@@ -439,7 +492,7 @@ function AppContent() {
                                     {/* Dashboard */}
                                     <button
                                         onClick={() => {
-                                            setActiveTab('dashboard');
+                                            changeTab('dashboard');
                                             setIsMobileMenuOpen(false);
                                         }}
                                         className={`w-full flex items-center space-x-3 px-4 py-3 rounded-md text-left transition-colors duration-200 ${
@@ -459,7 +512,7 @@ function AppContent() {
                                     <button
                                         onClick={() => {
                                             if (selectedProperty) {
-                                                setActiveTab('tenants');
+                                                changeTab('tenants');
                                                 setIsMobileMenuOpen(false);
                                             }
                                         }}
@@ -482,7 +535,7 @@ function AppContent() {
                                     <button
                                         onClick={() => {
                                             if (selectedProperty) {
-                                                setActiveTab('utilities');
+                                                changeTab('utilities');
                                                 setIsMobileMenuOpen(false);
                                             }
                                         }}
@@ -505,7 +558,7 @@ function AppContent() {
                                     <button
                                         onClick={() => {
                                             if (selectedProperty) {
-                                                setActiveTab('reports');
+                                                changeTab('reports');
                                                 setIsMobileMenuOpen(false);
                                             }
                                         }}
@@ -527,7 +580,7 @@ function AppContent() {
                                     {/* Properties */}
                                     <button
                                         onClick={() => {
-                                            setActiveTab('properties');
+                                            changeTab('properties');
                                             setIsMobileMenuOpen(false);
                                         }}
                                         className={`w-full flex items-center space-x-3 px-4 py-3 rounded-md text-left transition-colors duration-200 ${
@@ -579,6 +632,7 @@ function AppContent() {
                                                     key={property.id}
                                                     onClick={() => {
                                                         setSelectedProperty(property);
+                                                        localStorage.setItem('selectedPropertyId', property.id.toString());
                                                         setIsMobileMenuOpen(false);
                                                     }}
                                                     className={`w-full flex items-start p-3 text-left rounded-md transition-colors duration-200 ${

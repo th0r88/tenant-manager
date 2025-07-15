@@ -4,6 +4,7 @@ import { useTranslation } from '../hooks/useTranslation';
 export default function TenantForm({ onSubmit, initialData = {}, onCancel, selectedProperty }) {
     const { t } = useTranslation();
     const [capacityWarning, setCapacityWarning] = useState('');
+    const [validationErrors, setValidationErrors] = useState({});
     const [formData, setFormData] = useState({
         name: '',
         surname: '',
@@ -114,6 +115,121 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
         return null;
     };
 
+    const validateField = (fieldName, value) => {
+        const validationRules = {
+            name: {
+                required: true,
+                minLength: 2,
+                maxLength: 50,
+                pattern: /^[a-zA-ZšđčćžŠĐČĆŽ\s'-]+$/,
+                errorKey: 'name'
+            },
+            surname: {
+                required: true,
+                minLength: 2,
+                maxLength: 50,
+                pattern: /^[a-zA-ZšđčćžŠĐČĆŽ\s'-]+$/,
+                errorKey: 'surname'
+            },
+            address: {
+                required: true,
+                minLength: 5,
+                maxLength: 200,
+                errorKey: 'address'
+            },
+            tax_number: {
+                required: true,
+                minLength: 8,
+                maxLength: 20,
+                pattern: /^[A-Z0-9]+$/,
+                errorKey: 'tax_number'
+            },
+            rent_amount: {
+                required: true,
+                type: 'number',
+                min: 1,
+                max: 50000,
+                errorKey: 'rent_amount'
+            },
+            lease_duration: {
+                required: true,
+                type: 'integer',
+                min: 1,
+                max: 999,
+                errorKey: 'lease_duration'
+            },
+            room_area: {
+                required: true,
+                type: 'number',
+                min: 1,
+                max: 1000,
+                errorKey: 'room_area'
+            },
+            number_of_people: {
+                required: true,
+                type: 'integer',
+                min: 1,
+                max: 10,
+                errorKey: 'number_of_people'
+            }
+        };
+
+        const rules = validationRules[fieldName];
+        if (!rules) return null;
+
+        // Required field check
+        if (rules.required && (!value || value.toString().trim() === '')) {
+            return t('tenants.validation.required', { field: t(`tenants.validation.fields.${rules.errorKey}`) });
+        }
+
+        // Skip other validations if field is empty and not required
+        if (!value || value.toString().trim() === '') return null;
+
+        // String length validations
+        if (rules.minLength && value.length < rules.minLength) {
+            return t('tenants.validation.minLength', { 
+                field: t(`tenants.validation.fields.${rules.errorKey}`), 
+                min: rules.minLength 
+            });
+        }
+        if (rules.maxLength && value.length > rules.maxLength) {
+            return t('tenants.validation.maxLength', { 
+                field: t(`tenants.validation.fields.${rules.errorKey}`), 
+                max: rules.maxLength 
+            });
+        }
+
+        // Pattern validations
+        if (rules.pattern && !rules.pattern.test(value)) {
+            return t(`tenants.validation.pattern.${rules.errorKey}`);
+        }
+
+        // Number validations
+        if (rules.type === 'number' || rules.type === 'integer') {
+            const numValue = parseFloat(value);
+            if (isNaN(numValue)) {
+                return t('tenants.validation.invalidNumber', { field: t(`tenants.validation.fields.${rules.errorKey}`) });
+            }
+            if (rules.type === 'integer' && !Number.isInteger(numValue)) {
+                return t('tenants.validation.mustBeInteger', { field: t(`tenants.validation.fields.${rules.errorKey}`) });
+            }
+            if (rules.min !== undefined && numValue < rules.min) {
+                return t('tenants.validation.minValue', { 
+                    field: t(`tenants.validation.fields.${rules.errorKey}`), 
+                    min: rules.min 
+                });
+            }
+            if (rules.max !== undefined && numValue > rules.max) {
+                return t('tenants.validation.maxValue', { 
+                    field: t(`tenants.validation.fields.${rules.errorKey}`), 
+                    max: rules.max 
+                });
+            }
+        }
+
+        return null;
+    };
+
     const validateDates = () => {
         const moveIn = new Date(formData.move_in_date);
         const moveOut = formData.move_out_date ? new Date(formData.move_out_date) : null;
@@ -125,11 +241,41 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
-        if (moveIn > today && !initialData?.id) {
-            return t('tenants.validation.moveInNotFuture');
+        // Allow move-in date up to 3 months in the future
+        const maxFutureDate = new Date(today);
+        maxFutureDate.setMonth(maxFutureDate.getMonth() + 3);
+        
+        if (moveIn > maxFutureDate && !initialData?.id) {
+            return t('tenants.validation.moveInTooFarFuture');
         }
         
         return null;
+    };
+
+    const validateAllFields = () => {
+        const errors = {};
+        
+        // Validate each field
+        ['name', 'surname', 'address', 'tax_number', 'rent_amount', 'lease_duration', 'room_area', 'number_of_people'].forEach(field => {
+            const error = validateField(field, formData[field]);
+            if (error) {
+                errors[field] = error;
+            }
+        });
+
+        // Validate EMŠO
+        const emsoError = validateEMSO(formData.emso);
+        if (emsoError) {
+            errors.emso = emsoError;
+        }
+
+        // Validate dates
+        const dateError = validateDates();
+        if (dateError) {
+            errors.dates = dateError;
+        }
+
+        return errors;
     };
 
     const checkCapacity = () => {
@@ -157,6 +303,16 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        
+        // Validate all fields before submission
+        const errors = validateAllFields();
+        setValidationErrors(errors);
+        
+        // If there are validation errors, don't submit
+        if (Object.keys(errors).length > 0) {
+            return;
+        }
+        
         const submissionData = {
             ...formData,
             property_id: selectedProperty?.id || 1,
@@ -178,11 +334,24 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                 move_out_date: '',
                 occupancy_status: 'active'
             });
+            setValidationErrors({});
         }
     };
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setFormData({ ...formData, [name]: value });
+        
+        // Clear validation error for this field when user starts typing
+        if (validationErrors[name]) {
+            setValidationErrors({ ...validationErrors, [name]: null });
+        }
+        
+        // Real-time validation for immediate feedback
+        const error = validateField(name, value);
+        if (error) {
+            setValidationErrors({ ...validationErrors, [name]: error });
+        }
     };
 
     const handleCancel = () => {
@@ -264,9 +433,14 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                                 name="name" 
                                 value={formData.name} 
                                 onChange={handleChange} 
-                                className="input input-bordered w-full" 
+                                className={`input input-bordered w-full ${validationErrors.name ? 'input-error' : ''}`}
                                 required 
                             />
+                            {validationErrors.name && (
+                                <label className="label">
+                                    <span className="label-text-alt text-error">{validationErrors.name}</span>
+                                </label>
+                            )}
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
@@ -276,9 +450,14 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                                 name="surname" 
                                 value={formData.surname} 
                                 onChange={handleChange} 
-                                className="input input-bordered w-full" 
+                                className={`input input-bordered w-full ${validationErrors.surname ? 'input-error' : ''}`}
                                 required 
                             />
+                            {validationErrors.surname && (
+                                <label className="label">
+                                    <span className="label-text-alt text-error">{validationErrors.surname}</span>
+                                </label>
+                            )}
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
@@ -288,9 +467,14 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                                 name="address" 
                                 value={formData.address} 
                                 onChange={handleChange} 
-                                className="input input-bordered w-full" 
+                                className={`input input-bordered w-full ${validationErrors.address ? 'input-error' : ''}`}
                                 required 
                             />
+                            {validationErrors.address && (
+                                <label className="label">
+                                    <span className="label-text-alt text-error">{validationErrors.address}</span>
+                                </label>
+                            )}
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
@@ -319,9 +503,14 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                                 name="tax_number" 
                                 value={formData.tax_number} 
                                 onChange={handleChange} 
-                                className="input input-bordered w-full" 
+                                className={`input input-bordered w-full ${validationErrors.tax_number ? 'input-error' : ''}`}
                                 required
                             />
+                            {validationErrors.tax_number && (
+                                <label className="label">
+                                    <span className="label-text-alt text-error">{validationErrors.tax_number}</span>
+                                </label>
+                            )}
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
@@ -333,9 +522,14 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                                 step="any" 
                                 value={formData.rent_amount} 
                                 onChange={handleChange} 
-                                className="input input-bordered w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                className={`input input-bordered w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${validationErrors.rent_amount ? 'input-error' : ''}`}
                                 required 
                             />
+                            {validationErrors.rent_amount && (
+                                <label className="label">
+                                    <span className="label-text-alt text-error">{validationErrors.rent_amount}</span>
+                                </label>
+                            )}
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
@@ -348,9 +542,14 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                                 max="10"
                                 value={formData.number_of_people} 
                                 onChange={handleChange} 
-                                className="input input-bordered w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                className={`input input-bordered w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${validationErrors.number_of_people ? 'input-error' : ''}`}
                                 required 
                             />
+                            {validationErrors.number_of_people && (
+                                <label className="label">
+                                    <span className="label-text-alt text-error">{validationErrors.number_of_people}</span>
+                                </label>
+                            )}
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
@@ -361,9 +560,14 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                                 type="number" 
                                 value={formData.lease_duration} 
                                 onChange={handleChange} 
-                                className="input input-bordered w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                className={`input input-bordered w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${validationErrors.lease_duration ? 'input-error' : ''}`}
                                 required 
                             />
+                            {validationErrors.lease_duration && (
+                                <label className="label">
+                                    <span className="label-text-alt text-error">{validationErrors.lease_duration}</span>
+                                </label>
+                            )}
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
@@ -375,9 +579,14 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                                 step="any" 
                                 value={formData.room_area} 
                                 onChange={handleChange} 
-                                className="input input-bordered w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                className={`input input-bordered w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${validationErrors.room_area ? 'input-error' : ''}`}
                                 required 
                             />
+                            {validationErrors.room_area && (
+                                <label className="label">
+                                    <span className="label-text-alt text-error">{validationErrors.room_area}</span>
+                                </label>
+                            )}
                         </div>
                         <div className="form-control w-full">
                             <label className="label">
@@ -444,7 +653,8 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                             disabled={
                                 (!initialData?.id && selectedProperty?.capacity_status === 'at_capacity') ||
                                 validateDates() !== null ||
-                                validateEMSO(formData.emso) !== null
+                                validateEMSO(formData.emso) !== null ||
+                                Object.values(validationErrors).some(error => error !== null && error !== undefined)
                             }
                         >
                             {initialData?.id ? t('tenants.form.updateTenant') : t('tenants.form.addTenant')}

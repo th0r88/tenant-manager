@@ -98,7 +98,7 @@ export class ValidationMiddleware {
                     required: true,
                     type: 'integer',
                     min: 1,
-                    max: 120
+                    max: 999
                 },
                 room_area: {
                     required: true,
