@@ -31,20 +31,20 @@ export class EnvironmentConfig {
                 }
             },
             database: {
-                type: 'file', // 'file' or 'http'
+                type: 'file', // 'file', 'http', or 'postgresql'
                 path: 'tenant_manager.db',
                 host: 'localhost',
-                port: 8080,
-                name: 'tenant_manager.db',
-                user: '',
-                password: '',
+                port: 5432,
+                name: 'tenant_manager',
+                user: 'tenant_user',
+                password: 'tenant_pass',
                 timeout: 30000,
                 busyTimeout: 30000,
                 retries: 3,
                 retryDelay: 1000,
                 pool: {
-                    max: 10,
-                    min: 2,
+                    max: 20,
+                    min: 5,
                     idle: 30000,
                     acquire: 60000
                 },
@@ -53,6 +53,18 @@ export class EnvironmentConfig {
                     interval: 24, // hours
                     retention: 30, // days
                     directory: './backups'
+                },
+                postgresql: {
+                    ssl: false,
+                    connectionTimeoutMillis: 30000,
+                    idleTimeoutMillis: 30000,
+                    max: 20,
+                    min: 5,
+                    statement_timeout: 30000,
+                    query_timeout: 30000,
+                    application_name: 'tenant-manager',
+                    keepAlive: true,
+                    keepAliveInitialDelayMillis: 10000
                 }
             },
             logging: {

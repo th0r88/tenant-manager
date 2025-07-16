@@ -1,11 +1,15 @@
 import sqlite3 from 'sqlite3';
+import pkg from 'pg';
 import { promises as fs, readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createHash } from 'crypto';
 import { getDatabaseAdapter } from '../database/db.js';
 import environmentConfig from '../config/environment.js';
+import { getQueryTemplate } from '../database/queryAdapter.js';
 import axios from 'axios';
+
+const { Client } = pkg;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -17,6 +21,8 @@ class BackupService {
         this.maxBackups = 30; // Keep 30 days of backups
         this.compressionEnabled = false;
         this.encryptionEnabled = false;
+        this.retryAttempts = 3;
+        this.retryDelay = 1000;
     }
 
     async ensureBackupDirectory() {
@@ -32,17 +38,26 @@ class BackupService {
         
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const backupName = options.name || `tenant_manager_${timestamp}`;
-        const backupPath = join(this.backupDir, `${backupName}.db`);
+        const config = environmentConfig.getDatabaseConfig();
+        
+        // Use appropriate file extension based on database type
+        const extension = config.type === 'postgresql' ? '.sql' : '.db';
+        const backupPath = join(this.backupDir, `${backupName}${extension}`);
         
         try {
-            console.log(`🔄 Creating backup: ${backupName}...`);
+            console.log(`🔄 Creating ${config.type} backup: ${backupName}...`);
             
-            const config = environmentConfig.getDatabaseConfig();
-            
-            if (config.type === 'http') {
-                await this.createHttpBackup(backupPath, options);
-            } else {
-                await this.createFileBackup(backupPath, options);
+            switch (config.type) {
+                case 'postgresql':
+                    await this.createPostgreSQLBackup(backupPath, options);
+                    break;
+                case 'http':
+                    await this.createHttpBackup(backupPath, options);
+                    break;
+                case 'file':
+                default:
+                    await this.createFileBackup(backupPath, options);
+                    break;
             }
             
             // Generate backup metadata
@@ -67,6 +82,117 @@ class BackupService {
         }
     }
 
+    /**
+     * Create backup from PostgreSQL database
+     */
+    async createPostgreSQLBackup(backupPath, options = {}) {
+        const config = environmentConfig.getDatabaseConfig();
+        const client = new Client({
+            host: config.host,
+            port: config.port,
+            database: config.name,
+            user: config.user,
+            password: config.password,
+            ssl: config.postgresql?.ssl || false
+        });
+        
+        try {
+            await client.connect();
+            console.log('🔗 Connected to PostgreSQL for backup');
+            
+            // Get all tables
+            const tablesResult = await client.query(`
+                SELECT tablename 
+                FROM pg_tables 
+                WHERE schemaname = 'public' 
+                ORDER BY tablename
+            `);
+            
+            const tables = tablesResult.rows.map(row => row.tablename);
+            let sqlDump = `-- PostgreSQL Database Backup\n`;
+            sqlDump += `-- Generated: ${new Date().toISOString()}\n`;
+            sqlDump += `-- Database: ${config.name}\n`;
+            sqlDump += `-- Host: ${config.host}:${config.port}\n\n`;
+            
+            // Add schema for each table
+            for (const tableName of tables) {
+                console.log(`📋 Backing up table: ${tableName}`);
+                
+                // Get table schema
+                const schemaResult = await client.query(`
+                    SELECT 
+                        'CREATE TABLE ' || quote_ident(table_name) || ' (' ||
+                        string_agg(
+                            quote_ident(column_name) || ' ' || 
+                            data_type ||
+                            case when character_maximum_length is not null 
+                                then '(' || character_maximum_length || ')' 
+                                else '' 
+                            end ||
+                            case when is_nullable = 'NO' then ' NOT NULL' else '' end,
+                            ', '
+                        ) || ');' as create_statement
+                    FROM information_schema.columns 
+                    WHERE table_name = $1 
+                    AND table_schema = 'public'
+                    GROUP BY table_name
+                `, [tableName]);
+                
+                if (schemaResult.rows.length > 0) {
+                    sqlDump += `\n-- Table: ${tableName}\n`;
+                    sqlDump += `DROP TABLE IF EXISTS ${tableName};\n`;
+                    sqlDump += `${schemaResult.rows[0].create_statement}\n`;
+                }
+                
+                // Get table data
+                const dataResult = await client.query(`SELECT * FROM ${tableName}`);
+                
+                if (dataResult.rows.length > 0) {
+                    const columns = Object.keys(dataResult.rows[0]);
+                    
+                    sqlDump += `\n-- Data for table: ${tableName}\n`;
+                    
+                    for (const row of dataResult.rows) {
+                        const values = columns.map(col => {
+                            const value = row[col];
+                            if (value === null) return 'NULL';
+                            if (typeof value === 'string') return `'${value.replace(/'/g, "''")}'`;
+                            if (value instanceof Date) return `'${value.toISOString()}'`;
+                            if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
+                            return value;
+                        }).join(', ');
+                        
+                        sqlDump += `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${values});\n`;
+                    }
+                }
+            }
+            
+            // Add indexes and constraints
+            const indexesResult = await client.query(`
+                SELECT indexname, indexdef 
+                FROM pg_indexes 
+                WHERE schemaname = 'public' AND indexname NOT LIKE '%_pkey'
+            `);
+            
+            if (indexesResult.rows.length > 0) {
+                sqlDump += `\n-- Indexes\n`;
+                for (const index of indexesResult.rows) {
+                    sqlDump += `${index.indexdef};\n`;
+                }
+            }
+            
+            // Write backup to file
+            writeFileSync(backupPath, sqlDump, 'utf8');
+            
+            console.log(`📦 PostgreSQL backup completed: ${backupPath}`);
+            
+        } catch (error) {
+            throw new Error(`PostgreSQL backup failed: ${error.message}`);
+        } finally {
+            await client.end();
+        }
+    }
+    
     /**
      * Create backup from HTTP-based database
      */
@@ -124,8 +250,9 @@ class BackupService {
             console.log('🔄 Creating SQL dump backup...');
             
             // Get all tables
+            const config = environmentConfig.getDatabaseConfig();
             const tablesResponse = await client.post('/query', {
-                sql: `SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`,
+                sql: getQueryTemplate('systemTables', config.type),
                 params: []
             });
 
@@ -262,22 +389,44 @@ class BackupService {
                 return [];
             }
 
-            const result = await adapter.query(`
-                SELECT name, sql FROM sqlite_master 
-                WHERE type='table' AND name NOT LIKE 'sqlite_%'
-            `);
-
-            const tables = [];
-            for (const row of result.rows) {
-                const countResult = await adapter.query(`SELECT COUNT(*) as count FROM ${row.name}`);
-                tables.push({
-                    name: row.name,
-                    schema: row.sql,
-                    row_count: countResult.rows[0].count
-                });
+            const config = environmentConfig.getDatabaseConfig();
+            
+            if (config.type === 'postgresql') {
+                // PostgreSQL-specific table info
+                const result = await adapter.query(`
+                    SELECT tablename as name, 
+                           'CREATE TABLE ' || tablename || ' (...)' as sql
+                    FROM pg_tables 
+                    WHERE schemaname = 'public'
+                `);
+                
+                const tables = [];
+                for (const row of result.rows) {
+                    const countResult = await adapter.query(`SELECT COUNT(*) as count FROM ${row.name}`);
+                    tables.push({
+                        name: row.name,
+                        schema: row.sql,
+                        row_count: parseInt(countResult.rows[0].count)
+                    });
+                }
+                
+                return tables;
+            } else {
+                // SQLite/HTTP table info
+                const result = await adapter.query(getQueryTemplate('systemTables', config.type));
+                
+                const tables = [];
+                for (const row of result.rows) {
+                    const countResult = await adapter.query(`SELECT COUNT(*) as count FROM ${row.name}`);
+                    tables.push({
+                        name: row.name,
+                        schema: row.sql,
+                        row_count: countResult.rows[0].count
+                    });
+                }
+                
+                return tables;
             }
-
-            return tables;
         } catch (error) {
             console.warn(`Could not get table info: ${error.message}`);
             return [];
@@ -300,10 +449,17 @@ class BackupService {
             
             const config = environmentConfig.getDatabaseConfig();
             
-            if (config.type === 'http') {
-                await this.restoreHttpBackup(backupPath, options);
-            } else {
-                await this.restoreFileBackup(backupPath, options);
+            switch (config.type) {
+                case 'postgresql':
+                    await this.restorePostgreSQLBackup(backupPath, options);
+                    break;
+                case 'http':
+                    await this.restoreHttpBackup(backupPath, options);
+                    break;
+                case 'file':
+                default:
+                    await this.restoreFileBackup(backupPath, options);
+                    break;
             }
             
             console.log(`✅ Backup restored successfully`);
@@ -315,6 +471,62 @@ class BackupService {
         }
     }
 
+    /**
+     * Restore PostgreSQL database from backup
+     */
+    async restorePostgreSQLBackup(backupPath, options = {}) {
+        const config = environmentConfig.getDatabaseConfig();
+        const client = new Client({
+            host: config.host,
+            port: config.port,
+            database: config.name,
+            user: config.user,
+            password: config.password,
+            ssl: config.postgresql?.ssl || false
+        });
+        
+        try {
+            await client.connect();
+            console.log('🔗 Connected to PostgreSQL for restore');
+            
+            // Read backup file
+            const sqlDump = readFileSync(backupPath, 'utf8');
+            
+            // Split SQL statements
+            const statements = sqlDump
+                .split(';')
+                .map(stmt => stmt.trim())
+                .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+            
+            console.log(`📋 Executing ${statements.length} SQL statements...`);
+            
+            // Execute each statement
+            for (let i = 0; i < statements.length; i++) {
+                const statement = statements[i];
+                
+                if (statement.trim()) {
+                    try {
+                        await client.query(statement);
+                        if (i % 100 === 0) {
+                            console.log(`   Executed ${i + 1}/${statements.length} statements`);
+                        }
+                    } catch (error) {
+                        // Log error but continue with other statements
+                        console.warn(`   Warning: Statement ${i + 1} failed: ${error.message}`);
+                        console.warn(`   Statement: ${statement.substring(0, 100)}...`);
+                    }
+                }
+            }
+            
+            console.log(`📦 PostgreSQL restore completed: ${backupPath}`);
+            
+        } catch (error) {
+            throw new Error(`PostgreSQL restore failed: ${error.message}`);
+        } finally {
+            await client.end();
+        }
+    }
+    
     /**
      * Restore HTTP-based database from backup
      */
@@ -372,7 +584,8 @@ class BackupService {
 
                 try {
                     // Get all tables from backup
-                    db.all(`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`, async (err, tables) => {
+                    const config = environmentConfig.getDatabaseConfig();
+                    db.all(getQueryTemplate('systemTables', 'sqlite'), async (err, tables) => {
                         if (err) {
                             reject(new Error(`Failed to get tables: ${err.message}`));
                             return;
@@ -389,7 +602,7 @@ class BackupService {
                             // Recreate tables and restore data
                             for (const table of tables) {
                                 // Get table schema
-                                db.get(`SELECT sql FROM sqlite_master WHERE name = ?`, [table.name], async (err, schema) => {
+                                db.get(getQueryTemplate('systemTablesByName', 'sqlite'), [table.name], async (err, schema) => {
                                     if (err) {
                                         reject(new Error(`Failed to get schema for ${table.name}: ${err.message}`));
                                         return;
@@ -470,9 +683,9 @@ class BackupService {
             const backups = [];
             
             for (const file of files) {
-                if (file.endsWith('.db')) {
+                if (file.endsWith('.db') || file.endsWith('.sql')) {
                     const backupPath = join(this.backupDir, file);
-                    const metadataPath = join(this.backupDir, file.replace('.db', '.meta.json'));
+                    const metadataPath = join(this.backupDir, file.replace(/\.(db|sql)$/, '.meta.json'));
                     
                     let metadata = {};
                     if (existsSync(metadataPath)) {
@@ -535,7 +748,7 @@ class BackupService {
             await fs.unlink(backupPath);
             
             // Also delete metadata file if it exists
-            const metadataPath = backupPath.replace('.db', '.meta.json');
+            const metadataPath = backupPath.replace(/\.(db|sql)$/, '.meta.json');
             if (existsSync(metadataPath)) {
                 await fs.unlink(metadataPath);
             }
@@ -556,7 +769,7 @@ class BackupService {
         }
 
         try {
-            const metadataPath = backupPath.replace('.db', '.meta.json');
+            const metadataPath = backupPath.replace(/\.(db|sql)$/, '.meta.json');
             
             if (!existsSync(metadataPath)) {
                 throw new Error(`Backup metadata not found: ${metadataPath}`);
@@ -570,31 +783,45 @@ class BackupService {
                 throw new Error(`Backup integrity check failed: checksum mismatch`);
             }
 
-            // Try to open the backup database
-            return new Promise((resolve, reject) => {
-                const db = new sqlite3.Database(backupPath, sqlite3.OPEN_READONLY, (err) => {
-                    if (err) {
-                        reject(new Error(`Cannot open backup database: ${err.message}`));
-                        return;
-                    }
-
-                    // Test basic queries
-                    db.get('SELECT COUNT(*) as count FROM sqlite_master WHERE type="table"', (err, row) => {
-                        db.close();
-                        
+            // Verify backup content based on database type
+            if (backupPath.endsWith('.sql')) {
+                // PostgreSQL SQL dump verification
+                const sqlContent = backupData.toString('utf8');
+                const tableCount = (sqlContent.match(/CREATE TABLE/g) || []).length;
+                
+                return {
+                    valid: true,
+                    checksum: currentChecksum,
+                    tables: tableCount,
+                    metadata: metadata
+                };
+            } else {
+                // SQLite database verification
+                return new Promise((resolve, reject) => {
+                    const db = new sqlite3.Database(backupPath, sqlite3.OPEN_READONLY, (err) => {
                         if (err) {
-                            reject(new Error(`Backup database query failed: ${err.message}`));
-                        } else {
-                            resolve({
-                                valid: true,
-                                checksum: currentChecksum,
-                                tables: row.count,
-                                metadata: metadata
-                            });
+                            reject(new Error(`Cannot open backup database: ${err.message}`));
+                            return;
                         }
+
+                        // Test basic queries
+                        db.get(getQueryTemplate('systemTableCount', 'sqlite'), (err, row) => {
+                            db.close();
+                            
+                            if (err) {
+                                reject(new Error(`Backup database query failed: ${err.message}`));
+                            } else {
+                                resolve({
+                                    valid: true,
+                                    checksum: currentChecksum,
+                                    tables: row.count,
+                                    metadata: metadata
+                                });
+                            }
+                        });
                     });
                 });
-            });
+            }
         } catch (error) {
             throw new Error(`Backup verification failed: ${error.message}`);
         }
@@ -604,39 +831,102 @@ class BackupService {
         try {
             const config = environmentConfig.getDatabaseConfig();
             
-            if (config.type === 'http') {
-                // For HTTP connections, use the adapter
-                const adapter = getDatabaseAdapter();
-                const result = await adapter.query('PRAGMA integrity_check');
-                
-                if (result.rows[0].integrity_check === 'ok') {
-                    return true;
-                } else {
-                    throw new Error(`Database integrity issues found: ${JSON.stringify(result.rows)}`);
-                }
-            } else {
-                // For file connections, use direct SQLite access
-                return new Promise((resolve, reject) => {
-                    const db = new sqlite3.Database(dbPath);
+            switch (config.type) {
+                case 'postgresql':
+                    return await this.verifyPostgreSQLIntegrity();
+                case 'http':
+                    // For HTTP connections, use the adapter
+                    const adapter = getDatabaseAdapter();
+                    const result = await adapter.query('PRAGMA integrity_check');
                     
-                    db.all('PRAGMA integrity_check', (err, rows) => {
-                        db.close();
+                    if (result.rows[0].integrity_check === 'ok') {
+                        return true;
+                    } else {
+                        throw new Error(`Database integrity issues found: ${JSON.stringify(result.rows)}`);
+                    }
+                case 'file':
+                default:
+                    // For file connections, use direct SQLite access
+                    return new Promise((resolve, reject) => {
+                        const db = new sqlite3.Database(dbPath);
                         
-                        if (err) {
-                            reject(new Error(`Integrity check failed: ${err.message}`));
-                        } else {
-                            const result = rows[0];
-                            if (result && result.integrity_check === 'ok') {
-                                resolve(true);
+                        db.all('PRAGMA integrity_check', (err, rows) => {
+                            db.close();
+                            
+                            if (err) {
+                                reject(new Error(`Integrity check failed: ${err.message}`));
                             } else {
-                                reject(new Error(`Database integrity issues found: ${JSON.stringify(rows)}`));
+                                const result = rows[0];
+                                if (result && result.integrity_check === 'ok') {
+                                    resolve(true);
+                                } else {
+                                    reject(new Error(`Database integrity issues found: ${JSON.stringify(rows)}`));
+                                }
                             }
-                        }
+                        });
                     });
-                });
             }
         } catch (error) {
             throw new Error(`Database integrity verification failed: ${error.message}`);
+        }
+    }
+    
+    /**
+     * Verify PostgreSQL database integrity
+     */
+    async verifyPostgreSQLIntegrity() {
+        const config = environmentConfig.getDatabaseConfig();
+        const client = new Client({
+            host: config.host,
+            port: config.port,
+            database: config.name,
+            user: config.user,
+            password: config.password,
+            ssl: config.postgresql?.ssl || false
+        });
+        
+        try {
+            await client.connect();
+            
+            // Check database connection
+            const connectionResult = await client.query('SELECT 1 as connected');
+            if (!connectionResult.rows[0]?.connected) {
+                throw new Error('Database connection failed');
+            }
+            
+            // Check table existence
+            const tablesResult = await client.query(`
+                SELECT COUNT(*) as table_count 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public'
+            `);
+            
+            const tableCount = parseInt(tablesResult.rows[0].table_count);
+            if (tableCount === 0) {
+                throw new Error('No tables found in database');
+            }
+            
+            // Check for basic table structure
+            const expectedTables = ['properties', 'tenants', 'utility_entries', 'tenant_utility_allocations'];
+            for (const tableName of expectedTables) {
+                const tableResult = await client.query(`
+                    SELECT COUNT(*) as exists 
+                    FROM information_schema.tables 
+                    WHERE table_name = $1 AND table_schema = 'public'
+                `, [tableName]);
+                
+                if (parseInt(tableResult.rows[0].exists) === 0) {
+                    throw new Error(`Required table '${tableName}' not found`);
+                }
+            }
+            
+            console.log(`✅ PostgreSQL integrity check passed: ${tableCount} tables found`);
+            return true;
+            
+        } catch (error) {
+            throw new Error(`PostgreSQL integrity check failed: ${error.message}`);
+        } finally {
+            await client.end();
         }
     }
 

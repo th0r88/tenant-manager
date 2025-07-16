@@ -1,6 +1,8 @@
 import db from '../database/db.js';
 import { calculatePersonDays, calculateSqmDays } from './proportionalCalculationService.js';
 import precisionMath from '../utils/precisionMath.js';
+import { getOccupancyDateRangeQuery } from '../database/queryAdapter.js';
+import environmentConfig from '../config/environment.js';
 
 export function calculateAllocations(utilityEntryId) {
     return new Promise((resolve, reject) => {
@@ -9,12 +11,15 @@ export function calculateAllocations(utilityEntryId) {
             
             // Get active tenants for the property during the utility period
             // Handle both NULL and empty string values for move_out_date
+            const config = environmentConfig.getDatabaseConfig();
+            const dateQueries = getOccupancyDateRangeQuery(config.type);
+            
             const tenantQuery = `
                 SELECT * FROM tenants 
                 WHERE property_id = ? 
                 AND occupancy_status = 'active'
-                AND move_in_date <= date(? || '-' || printf('%02d', ?) || '-01', '+1 month', '-1 day')
-                AND (move_out_date IS NULL OR move_out_date = '' OR move_out_date >= date(? || '-' || printf('%02d', ?) || '-01'))
+                ${dateQueries.moveInCheck}
+                ${dateQueries.moveOutCheck}
             `;
             
             db.all(tenantQuery, [
@@ -111,12 +116,15 @@ export function calculateWeightedAllocations(utilityEntryId) {
         db.get('SELECT * FROM utility_entries WHERE id = ?', [utilityEntryId], (err, utility) => {
             if (err) return reject(err);
             
+            const config = environmentConfig.getDatabaseConfig();
+            const dateQueries = getOccupancyDateRangeQuery(config.type);
+            
             const tenantQuery = `
                 SELECT * FROM tenants 
                 WHERE property_id = ? 
                 AND occupancy_status = 'active'
-                AND move_in_date <= date(? || '-' || printf('%02d', ?) || '-01', '+1 month', '-1 day')
-                AND (move_out_date IS NULL OR move_out_date = '' OR move_out_date >= date(? || '-' || printf('%02d', ?) || '-01'))
+                ${dateQueries.moveInCheck}
+                ${dateQueries.moveOutCheck}
             `;
             
             db.all(tenantQuery, [

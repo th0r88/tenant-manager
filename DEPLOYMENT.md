@@ -1,57 +1,82 @@
-# Production Deployment Guide - Tenant Management System 1.1
+# Production Deployment Guide - PostgreSQL Tenant Management System
 
-This guide covers deploying the tenant management system with containerized SQLite database in production environments, including homelab setups with enterprise-grade reliability and security hardening.
+This guide covers deploying the tenant management system with PostgreSQL database in production environments, including homelab setups with enterprise-grade reliability and security hardening.
 
 ## Prerequisites
 
 ### System Requirements
 - **Operating System**: Linux (Ubuntu 20.04+), macOS, or Windows with WSL2
-- **Docker**: Version 20.10 or higher
-- **Docker Compose**: Version 1.29 or higher
-- **Node.js**: Version 18+ (LTS recommended)
+- **Docker**: Version 20.10 or higher with Docker Compose V2
 - **Memory**: Minimum 2GB RAM, recommended 4GB+
 - **Storage**: Minimum 10GB free space
-- **Network**: Ports 5999 (application) and 5998 (database management)
+- **Network**: Ports 5999 (application) and 5432 (PostgreSQL)
 
 ### Software Dependencies
 ```bash
 # Install Docker (Ubuntu/Debian)
 sudo apt-get update
-sudo apt-get install docker.io docker-compose
+sudo apt-get install docker.io docker-compose-plugin
 
-# Install Node.js
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
+# Enable Docker service
+sudo systemctl enable --now docker
+sudo usermod -aG docker $USER
 
 # Verify installations
 docker --version
-docker-compose --version
-node --version
+docker compose version
 ```
 
-## Quick Start (Containerized Deployment)
+## Quick Start (PostgreSQL Deployment)
 
 ### 1. Clone and Setup
 
 ```bash
 git clone <repository-url>
-cd tennants
-npm install
+cd tenant-manager
 ```
 
 ### 2. Configure Environment
 
 ```bash
-# Set environment variables for containerized deployment
-export DATABASE_TYPE=http
-export DATABASE_HOST=sqlite-db
-export DATABASE_PORT=8080
-export DATABASE_NAME=tenant_manager.db
-export DATABASE_USER=tenant_user
-export DATABASE_PASSWORD=secure_password_here
+# Set environment variables for PostgreSQL deployment
 export NODE_ENV=production
-export PORT=5999
+export DATABASE_TYPE=postgresql
+export DATABASE_HOST=postgres
+export DATABASE_PORT=5432
+export DATABASE_NAME=tenant_manager
+export DATABASE_USER=tenant_user
+export DATABASE_PASSWORD=your_secure_password
+
+# Optional performance tuning
+export DATABASE_POOL_MAX=20
+export DATABASE_POOL_MIN=5
+export LOG_LEVEL=info
 ```
+
+### 3. Deploy with Docker Compose
+
+```bash
+# Start all services
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# Check service status
+docker compose ps
+```
+
+### 4. Verify Deployment
+
+```bash
+# Check application health
+curl http://localhost:5999/api/health
+
+# Check PostgreSQL connection
+docker compose exec postgres pg_isready -U tenant_user -d tenant_manager
+```
+
+Application will be available at: http://localhost:5999
 
 ### 3. Deploy with Zero Downtime
 

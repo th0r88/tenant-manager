@@ -4,6 +4,8 @@
  */
 
 import db from '../database/db.js';
+import { getDateFilterQuery } from '../database/queryAdapter.js';
+import environmentConfig from '../config/environment.js';
 
 /**
  * Initialize occupancy tracking table
@@ -160,12 +162,12 @@ export const getOccupancyStatistics = async (propertyId, year, month = null) => 
                 COUNT(CASE WHEN oc.change_type = 'date_adjustment' THEN 1 END) as date_adjustments
             FROM occupancy_changes oc
             WHERE oc.property_id = ? 
-            AND strftime('%Y', oc.created_at) = ?
+            AND ${getDateFilterQuery('oc.created_at', '%Y', environmentConfig.getDatabaseConfig().type)}
         `;
         const params = [propertyId, year.toString()];
         
         if (month) {
-            query += ' AND strftime(\'%m\', oc.created_at) = ?';
+            query += ` AND ${getDateFilterQuery('oc.created_at', '%m', environmentConfig.getDatabaseConfig().type)}`;
             params.push(month.toString().padStart(2, '0'));
         }
         
@@ -208,12 +210,12 @@ export const getComprehensiveOccupancyReport = async (filters = {}) => {
         }
         
         if (year) {
-            query += ' AND strftime(\'%Y\', oc.created_at) = ?';
+            query += ` AND ${getDateFilterQuery('oc.created_at', '%Y', environmentConfig.getDatabaseConfig().type)}`;
             params.push(year.toString());
         }
         
         if (month) {
-            query += ' AND strftime(\'%m\', oc.created_at) = ?';
+            query += ` AND ${getDateFilterQuery('oc.created_at', '%m', environmentConfig.getDatabaseConfig().type)}`;
             params.push(month.toString().padStart(2, '0'));
         }
         

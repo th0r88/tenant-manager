@@ -264,7 +264,7 @@
   "reports": {
     "title": "Reports",
     "generateReport": "Generate Report",
-    "downloadPdf": "Download PDF",
+    "downloadPdf": "PDF",
     "batchExport": "Batch Export Reports",
     "selectTenants": "Select Tenants",
     "selectAll": "Select All",
