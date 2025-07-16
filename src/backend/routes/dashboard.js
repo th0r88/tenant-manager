@@ -1,5 +1,7 @@
 import express from 'express';
 import db from '../database/db.js';
+import { getDashboardDateFilterQuery } from '../database/queryAdapter.js';
+import environmentConfig from '../config/environment.js';
 import { calculateOccupiedDays, getDaysInMonth } from '../services/proportionalCalculationService.js';
 
 const router = express.Router();
@@ -147,7 +149,7 @@ router.get('/revenue-trends/:months', (req, res) => {
          JOIN properties p ON ue.property_id = p.id
          JOIN tenants t ON t.property_id = p.id
          LEFT JOIN tenant_utility_allocations tua ON tua.utility_entry_id = ue.id AND tua.tenant_id = t.id
-         WHERE datetime(ue.year || '-' || printf('%02d', ue.month) || '-01') >= datetime('now', '-${months} months')
+         ${getDashboardDateFilterQuery(months, environmentConfig.getDatabaseConfig().type)}
          GROUP BY ue.month, ue.year
          ORDER BY ue.year DESC, ue.month DESC`,
         (err, rows) => {
@@ -169,7 +171,7 @@ router.get('/utility-breakdown/:months', (req, res) => {
             AVG(ue.total_amount) as avg_amount,
             COUNT(DISTINCT ue.property_id) as properties_count
          FROM utility_entries ue
-         WHERE datetime(ue.year || '-' || printf('%02d', ue.month) || '-01') >= datetime('now', '-${months} months')
+         ${getDashboardDateFilterQuery(months, environmentConfig.getDatabaseConfig().type)}
          GROUP BY ue.utility_type
          ORDER BY total_amount DESC`,
         (err, rows) => {

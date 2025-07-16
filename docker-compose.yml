@@ -1,4 +1,48 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=tenant_manager
+      - POSTGRES_USER=tenant_user
+      - POSTGRES_PASSWORD=tenant_pass
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --locale=C
+      - POSTGRES_HOST_AUTH_METHOD=md5
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./src/backend/database/init-postgres.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./src/backend/database/constraints-postgres.sql:/docker-entrypoint-initdb.d/02-constraints.sql:ro
+      - ./src/backend/database/indexes-postgres.sql:/docker-entrypoint-initdb.d/03-indexes.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tenant_user -d tenant_manager"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - tenant-network
+    ports:
+      - "5432:5432"
+    command: >
+      postgres 
+      -c shared_preload_libraries=pg_stat_statements
+      -c max_connections=100
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=4MB
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+      -c log_statement=all
+      -c log_duration=on
+      -c log_min_duration_statement=1000
+
   tenant-manager:
     image: jferme/tenant-manager:latest
     container_name: tenant-manager-homelab
@@ -7,12 +51,22 @@ services:
       - "5999:5999"
     environment:
       - NODE_ENV=production
-      - DATABASE_TYPE=file
-      - DATABASE_PATH=/data/tenant_manager.db
+      - DATABASE_TYPE=postgresql
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=tenant_manager
+      - DATABASE_USER=tenant_user
+      - DATABASE_PASSWORD=tenant_pass
+      - DATABASE_POOL_MAX=20
+      - DATABASE_POOL_MIN=5
+      - DATABASE_TIMEOUT=30000
+      - DATABASE_RETRY_ATTEMPTS=3
       - LOG_LEVEL=info
       - BACKUP_INTERVAL=24
+      - BACKUP_RETENTION=30
+      - HEALTH_CHECK_ENABLED=true
+      - HEALTH_CHECK_INTERVAL=30000
     volumes:
-      - sqlite-data:/data
       - tenant-backups:/app/backups
       - tenant-logs:/app/logs
       - tenant-alerts:/app/alerts
@@ -24,13 +78,16 @@ services:
       start_period: 60s
     networks:
       - tenant-network
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 networks:
   tenant-network:
     driver: bridge
 
 volumes:
-  sqlite-data:
+  postgres-data:
     driver: local
   tenant-backups:
     driver: local

@@ -16,7 +16,10 @@ let legacyDb = null;
 async function initializeAdapter() {
     const config = environmentConfig.getDatabaseConfig();
     
-    if (config.type === 'http') {
+    if (config.type === 'postgresql') {
+        console.log('Initializing PostgreSQL database connection...');
+        dbAdapter = new DatabaseAdapter(config);
+    } else if (config.type === 'http') {
         console.log('Initializing HTTP-based database connection...');
         dbAdapter = new DatabaseAdapter(config);
     } else {

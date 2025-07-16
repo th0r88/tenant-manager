@@ -32,6 +32,7 @@
     "i18next": "^25.2.1",
     "i18next-browser-languagedetector": "^8.2.0",
     "pdfkit": "^0.13.0",
+    "pg": "^8.11.3",
     "qrcode": "^1.5.4",
     "react-i18next": "^15.5.3",
     "sqlite3": "^5.1.6"
