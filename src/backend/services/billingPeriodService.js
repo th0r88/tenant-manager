@@ -41,7 +41,7 @@ export const createBillingPeriod = async (propertyId, month, year, options = {})
              FROM tenants t
              JOIN properties p ON t.property_id = p.id  
              WHERE t.property_id = $1`,
-            [propertyId, `${year}-${month.toString().padStart(2, '0')}-01`, `${year}-${month.toString().padStart(2, '0')}-31`]
+            [propertyId, `${year}-${month.toString().padStart(2, '0')}-01`, `${year}-${month.toString().padStart(2, '0')}-${new Date(year, month, 0).getDate().toString().padStart(2, '0')}`]
         );
         
         const tenants = tenantsResult.rows.filter(t => t.was_present);
@@ -148,7 +148,7 @@ export const getBillingPeriods = async (propertyId, options = {}) => {
                  AND (t.move_out_date IS NULL OR t.move_out_date >= $3)`,
                 [
                     propertyId,
-                    `${period.year}-${period.month.toString().padStart(2, '0')}-31`,
+                    `${period.year}-${period.month.toString().padStart(2, '0')}-${new Date(period.year, period.month, 0).getDate().toString().padStart(2, '0')}`,
                     `${period.year}-${period.month.toString().padStart(2, '0')}-01`
                 ]
             );

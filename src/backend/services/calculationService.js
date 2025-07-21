@@ -33,7 +33,9 @@ export const calculateAllocations = async (utilityEntryId) => {
         `;
         
         const startOfMonth = `${utility.year}-${utility.month.toString().padStart(2, '0')}-01`;
-        const endOfMonth = `${utility.year}-${utility.month.toString().padStart(2, '0')}-31`;
+        // Calculate the actual last day of the month to avoid invalid dates like June 31st
+        const lastDayOfMonth = new Date(utility.year, utility.month, 0).getDate();
+        const endOfMonth = `${utility.year}-${utility.month.toString().padStart(2, '0')}-${lastDayOfMonth.toString().padStart(2, '0')}`;
         
         const tenantsResult = await db.query(tenantQuery, [
             utility.property_id,

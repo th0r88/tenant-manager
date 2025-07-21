@@ -141,18 +141,20 @@ export class ValidationMiddleware {
                     required: true,
                     type: 'integer',
                     min: 1,
-                    max: 12
+                    max: 12,
+                    custom: 'month_year_validation'
                 },
                 year: {
                     required: true,
                     type: 'integer',
                     min: 2000,
-                    max: 2100
+                    max: 2100,
+                    custom: 'month_year_validation'
                 },
                 utility_type: {
                     required: true,
                     type: 'string',
-                    enum: ['electricity', 'water', 'heating', 'internet', 'maintenance', 'gas', 'waste', 'cleaning']
+                    enum: ['electricity', 'water', 'heating', 'tv_rtv', 'internet', 'maintenance', 'gas', 'waste', 'cleaning']
                 },
                 total_amount: {
                     required: true,
@@ -418,6 +420,37 @@ export class ValidationMiddleware {
                             field: fieldName,
                             code: 'INVALID_DATE_RANGE',
                             message: 'Move-out date must be after move-in date'
+                        };
+                    }
+                }
+                break;
+
+            case 'month_year_validation':
+                // Validate that month/year combination creates a valid date
+                if (fieldName === 'month' && allData.year) {
+                    const month = parseInt(value);
+                    const year = parseInt(allData.year);
+                    
+                    // Check if the combination would create an invalid date (like June 31st)
+                    const daysInMonth = new Date(year, month, 0).getDate();
+                    if (daysInMonth === 0) {
+                        return {
+                            field: fieldName,
+                            code: 'INVALID_DATE',
+                            message: `Invalid month/year combination: ${month}/${year}`
+                        };
+                    }
+                } else if (fieldName === 'year' && allData.month) {
+                    const month = parseInt(allData.month);
+                    const year = parseInt(value);
+                    
+                    // Check if the combination would create an invalid date
+                    const daysInMonth = new Date(year, month, 0).getDate();
+                    if (daysInMonth === 0) {
+                        return {
+                            field: fieldName,
+                            code: 'INVALID_DATE',
+                            message: `Invalid month/year combination: ${month}/${year}`
                         };
                     }
                 }
