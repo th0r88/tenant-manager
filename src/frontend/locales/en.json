@@ -85,7 +85,8 @@
     "monthlyAbbreviation": "/mo",
     "tenantsLabel": "Tenants:",
     "monthlyRent": "Monthly Rent:",
-    "totalArea": "Total Area:"
+    "totalArea": "Total Area:",
+    "noRecentActivity": "No recent activity"
   },
   "tenants": {
     "title": "Tenant Management",
@@ -335,7 +336,7 @@
   },
   "language": {
     "select": "Select Language",
-    "slovenian": "Slovenian",
-    "english": "English"
+    "slovenian": "SI",
+    "english": "EN"
   }
 }

@@ -23,7 +23,7 @@ const LanguageSelector = () => {
         aria-label={t('language.select')}
       >
         <span className="text-lg">{currentLangInfo.flag}</span>
-        <span className="hidden sm:inline">{currentLangInfo.name}</span>
+        <span className="hidden sm:inline">{currentLangInfo.code === 'sl' ? t('language.slovenian') : t('language.english')}</span>
         <svg
           className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
@@ -56,7 +56,7 @@ const LanguageSelector = () => {
                   }`}
                 >
                   <span className="mr-3 text-lg">{language.flag}</span>
-                  <span>{language.name}</span>
+                  <span>{language.code === 'sl' ? t('language.slovenian') : t('language.english')}</span>
                   {currentLanguage === language.code && (
                     <svg className="w-4 h-4 ml-auto text-primary" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />

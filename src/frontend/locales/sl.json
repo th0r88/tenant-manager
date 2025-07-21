@@ -85,7 +85,8 @@
     "monthlyAbbreviation": "/mes",
     "tenantsLabel": "Podnajemniki:",
     "monthlyRent": "Mesečna najemnina:",
-    "totalArea": "Skupna površina:"
+    "totalArea": "Skupna površina:",
+    "noRecentActivity": "Ni nedavnih aktivnosti"
   },
   "tenants": {
     "title": "Upravljanje podnajemnikov",
@@ -329,7 +330,7 @@
   },
   "language": {
     "select": "Izberi jezik",
-    "slovenian": "Slovenščina",
-    "english": "Angleščina"
+    "slovenian": "SI",
+    "english": "EN"
   }
 }
