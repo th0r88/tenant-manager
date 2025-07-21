@@ -269,7 +269,21 @@ export default class DatabaseAdapter {
      */
     async applyMigrations() {
         try {
-            const migration = readFileSync(join(__dirname, 'migration.sql'), 'utf8');
+            let migrationFile;
+            switch (this.type) {
+                case 'postgresql':
+                    migrationFile = 'migration-postgres.sql';
+                    break;
+                case 'http':
+                    migrationFile = 'migration.sql';
+                    break;
+                case 'file':
+                default:
+                    migrationFile = 'migration.sql';
+                    break;
+            }
+            
+            const migration = readFileSync(join(__dirname, migrationFile), 'utf8');
             await this.exec(migration);
             console.log('Migration completed successfully');
         } catch (error) {

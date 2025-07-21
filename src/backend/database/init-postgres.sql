@@ -185,10 +185,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Log the initialization
-INSERT INTO properties (name, address, property_type, house_area, number_of_tenants)
-VALUES ('Initialization Complete', 'PostgreSQL Database', 'system', 0, 0)
-ON CONFLICT DO NOTHING;
+-- Database initialization completed - no logging entry needed
 
 -- Show completion message
 SELECT 'PostgreSQL database initialization completed successfully!' as message;
