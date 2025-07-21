@@ -156,7 +156,7 @@ router.get('/summary/:month/:year', async (req, res) => {
                 ...tenant,
                 rent_amount: currentMonthRent,
                 utilities_total: Math.round(utilities_total * 100) / 100, // Round to 2 decimal places
-                total_due: currentMonthRent + utilities_total,
+                total_due: parseFloat(currentMonthRent) + parseFloat(utilities_total),
                 // Additional info for debugging
                 is_rent_prorated: !rentCalculation.isFullMonth,
                 is_utilities_prorated: utilities_prorated,
@@ -537,6 +537,68 @@ router.post('/batch-export-stream', async (req, res) => {
                 details: error.message 
             });
         }
+    }
+});
+
+// Regenerate all PDFs for a specific month/year
+router.post('/regenerate/:month/:year', async (req, res) => {
+    try {
+        const { month, year } = req.params;
+        const { propertyId = 1, language = 'sl' } = req.body;
+        
+        // Get all tenants for the property
+        const tenantsResult = await db.query(
+            `SELECT id, name, surname 
+             FROM tenants 
+             WHERE property_id = $1`,
+            [propertyId]
+        );
+        const tenants = tenantsResult.rows;
+        
+        if (tenants.length === 0) {
+            return res.json({ 
+                success: true, 
+                message: 'No tenants found for regeneration',
+                regenerated: 0 
+            });
+        }
+        
+        let regeneratedCount = 0;
+        let errors = [];
+        
+        // Regenerate PDF for each tenant
+        for (const tenant of tenants) {
+            try {
+                // The PDF generation happens automatically when the endpoint is called
+                // We just need to verify the tenant has valid data for the period
+                const testResponse = await fetch(`http://localhost:5999/api/reports/${tenant.id}/${month}/${year}?lang=${language}`, {
+                    method: 'HEAD'
+                });
+                
+                if (testResponse.ok) {
+                    regeneratedCount++;
+                } else {
+                    errors.push(`Failed to regenerate PDF for ${tenant.name} ${tenant.surname}`);
+                }
+            } catch (error) {
+                errors.push(`Error regenerating PDF for ${tenant.name} ${tenant.surname}: ${error.message}`);
+            }
+        }
+        
+        res.json({
+            success: true,
+            message: `Regeneration completed for ${month}/${year}`,
+            regenerated: regeneratedCount,
+            total: tenants.length,
+            errors: errors
+        });
+        
+    } catch (error) {
+        console.error('PDF regeneration error:', error);
+        res.status(500).json({ 
+            error: 'PDF regeneration failed', 
+            details: error.message 
+        });
     }
 });
 

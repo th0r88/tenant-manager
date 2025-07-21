@@ -790,7 +790,12 @@ function AppContent() {
             
             {activeTab === 'reports' && (
                 <ErrorBoundary fallback={ReportGeneratorErrorFallback}>
-                    <ReportGenerator selectedProperty={selectedProperty} tenants={tenants} />
+                    <ReportGenerator 
+                        selectedProperty={selectedProperty} 
+                        tenants={tenants} 
+                        onSuccess={setSuccess}
+                        onError={setError}
+                    />
                 </ErrorBoundary>
             )}
             

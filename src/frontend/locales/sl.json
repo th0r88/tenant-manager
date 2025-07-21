@@ -306,7 +306,13 @@
     "tenant": "Podnajemnik",
     "rent": "Najemnina",
     "utilitiesLabel": "Stroški",
-    "actions": "Dejanja"
+    "actions": "Dejanja",
+    "regeneratePDFs": "Generiraj ponovno PDF",
+    "regenerating": "Generiranje...",
+    "regenerationComplete": "Generiranje dokončano",
+    "regenerationFailed": "Generiranje neuspešno",
+    "regenerationError": "Napaka pri generiranju",
+    "reportsRegenerated": "poročil ponovno ustvarjenih"
   },
   "forms": {
     "required": "To polje je obvezno",

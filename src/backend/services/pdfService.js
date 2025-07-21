@@ -289,7 +289,7 @@ function drawSimpleTotal(doc, startY, rentCalculation, utilities, language = 'sl
     // Calculate total
     const rentAmount = rentCalculation.isFullMonth ? rentCalculation.monthlyRent : rentCalculation.proRatedAmount;
     const utilitiesTotal = utilities.reduce((sum, utility) => sum + (parseFloat(utility.allocated_amount) || 0), 0);
-    const grandTotal = rentAmount + utilitiesTotal;
+    const grandTotal = parseFloat(rentAmount) + utilitiesTotal;
     
     // Simple total amount line
     PDF_UTILS.addStyledText(doc, `${t(language, 'pdf.totalAmountDue')}:`, pageMargin, currentY, {

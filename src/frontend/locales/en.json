@@ -312,7 +312,13 @@
     "utilitiesLabel": "Utilities",
     "totalDue": "Total Due",
     "actions": "Actions",
-    "exportAsZip": "Export as ZIP"
+    "exportAsZip": "Export as ZIP",
+    "regeneratePDFs": "Regenerate PDFs",
+    "regenerating": "Regenerating...",
+    "regenerationComplete": "Regeneration complete",
+    "regenerationFailed": "Regeneration failed",
+    "regenerationError": "Regeneration error",
+    "reportsRegenerated": "reports regenerated"
   },
   "forms": {
     "required": "This field is required",

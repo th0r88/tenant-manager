@@ -4,7 +4,7 @@ import DownloadButton from './DownloadButton';
 import BatchExportModal from './BatchExportModal';
 import { useTranslation } from '../hooks/useTranslation';
 
-export default function ReportGenerator({ selectedProperty, tenants }) {
+export default function ReportGenerator({ selectedProperty, tenants, onSuccess, onError }) {
     const { t, formatCurrency, getMonthNames, currentLanguage } = useTranslation();
     const [month, setMonth] = useState(new Date().getMonth() + 1);
     const [year, setYear] = useState(new Date().getFullYear());
@@ -17,6 +17,7 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
     const [downloadingPdfs, setDownloadingPdfs] = useState(new Set());
     const [showBatchModal, setShowBatchModal] = useState(false);
     const [selectedTenants, setSelectedTenants] = useState(new Set());
+    const [regenerating, setRegenerating] = useState(false);
 
     useEffect(() => {
         if (selectedProperty) {
@@ -69,6 +70,33 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
             setSelectedTenants(new Set());
         } else {
             setSelectedTenants(new Set(filteredSummary.map(t => t.id)));
+        }
+    };
+
+    const handleRegeneratePDFs = async () => {
+        if (!selectedProperty) return;
+        
+        setRegenerating(true);
+        try {
+            const result = await reportApi.regeneratePDFs(month, year, selectedProperty.id, pdfLanguage);
+            if (result.success) {
+                // Reload summary to get updated data
+                await loadSummary();
+                if (onSuccess) {
+                    onSuccess(`${t('reports.regenerationComplete')}: ${result.regenerated}/${result.total} ${t('reports.reportsRegenerated')}`);
+                }
+            } else {
+                if (onError) {
+                    onError(`${t('reports.regenerationFailed')}: ${result.errors?.join(', ')}`);
+                }
+            }
+        } catch (error) {
+            console.error('PDF regeneration failed:', error);
+            if (onError) {
+                onError(`${t('reports.regenerationError')}: ${error.message}`);
+            }
+        } finally {
+            setRegenerating(false);
         }
     };
 
@@ -180,6 +208,22 @@ export default function ReportGenerator({ selectedProperty, tenants }) {
                                         </label>
                                     </div>
                                     <div className="flex gap-2 min-h-[2rem]">
+                                        <button 
+                                            className="btn btn-warning btn-sm"
+                                            onClick={handleRegeneratePDFs}
+                                            disabled={regenerating}
+                                        >
+                                            {regenerating ? (
+                                                <>
+                                                    <span className="loading loading-spinner loading-xs"></span>
+                                                    {t('reports.regenerating')}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    🔄 {t('reports.regeneratePDFs')}
+                                                </>
+                                            )}
+                                        </button>
                                         {selectedTenants.size > 0 && (
                                             <button 
                                                 className="btn btn-info btn-sm"

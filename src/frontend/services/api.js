@@ -67,6 +67,18 @@ export const utilityApi = {
 export const reportApi = {
     getSummary: (month, year, propertyId = 1) => fetch(`${API_BASE}/reports/summary/${month}/${year}?property_id=${propertyId}`).then(r => r.json()),
     
+    regeneratePDFs: async (month, year, propertyId = 1, language = 'sl') => {
+        const response = await fetch(`${API_BASE}/reports/regenerate/${month}/${year}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ propertyId, language })
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    },
+    
     downloadPdf: async (tenantId, month, year, language = 'sl') => {
         const response = await fetch(`${API_BASE}/reports/${tenantId}/${month}/${year}?lang=${language}`);
         if (!response.ok) {
