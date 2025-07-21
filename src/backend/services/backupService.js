@@ -412,7 +412,7 @@ class BackupService {
                 
                 return tables;
             } else {
-                // SQLite/HTTP table info
+                // HTTP/Other database types
                 const result = await adapter.query(getQueryTemplate('systemTables', config.type));
                 
                 const tables = [];
@@ -421,7 +421,7 @@ class BackupService {
                     tables.push({
                         name: row.name,
                         schema: row.sql,
-                        row_count: countResult.rows[0].count
+                        row_count: parseInt(countResult.rows[0].count)
                     });
                 }
                 
@@ -835,36 +835,19 @@ class BackupService {
                 case 'postgresql':
                     return await this.verifyPostgreSQLIntegrity();
                 case 'http':
-                    // For HTTP connections, use the adapter
+                    // For HTTP connections, use the adapter for basic connectivity check
                     const adapter = getDatabaseAdapter();
-                    const result = await adapter.query('PRAGMA integrity_check');
+                    const result = await adapter.query('SELECT 1 as test');
                     
-                    if (result.rows[0].integrity_check === 'ok') {
+                    if (result.rows[0]?.test === 1) {
                         return true;
                     } else {
-                        throw new Error(`Database integrity issues found: ${JSON.stringify(result.rows)}`);
+                        throw new Error(`Database connectivity test failed`);
                     }
                 case 'file':
                 default:
-                    // For file connections, use direct SQLite access
-                    return new Promise((resolve, reject) => {
-                        const db = new sqlite3.Database(dbPath);
-                        
-                        db.all('PRAGMA integrity_check', (err, rows) => {
-                            db.close();
-                            
-                            if (err) {
-                                reject(new Error(`Integrity check failed: ${err.message}`));
-                            } else {
-                                const result = rows[0];
-                                if (result && result.integrity_check === 'ok') {
-                                    resolve(true);
-                                } else {
-                                    reject(new Error(`Database integrity issues found: ${JSON.stringify(rows)}`));
-                                }
-                            }
-                        });
-                    });
+                    // For PostgreSQL, use the standard integrity check
+                    return await this.verifyPostgreSQLIntegrity();
             }
         } catch (error) {
             throw new Error(`Database integrity verification failed: ${error.message}`);

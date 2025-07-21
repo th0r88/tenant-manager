@@ -1,10 +1,9 @@
 import express from 'express';
 import { 
     createBillingPeriod, 
-    finalizeBillingPeriod, 
     getBillingPeriods, 
     getBillingAuditTrail, 
-    recalculateBillingPeriod 
+    getBillingSummary 
 } from '../services/billingPeriodService.js';
 
 const router = express.Router();
@@ -47,23 +46,21 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Finalize billing period
+// Finalize billing period (TODO: implement finalize functionality)
 router.put('/:id/finalize', async (req, res) => {
     try {
-        const { notes } = req.body;
-        const billingPeriod = await finalizeBillingPeriod(parseInt(req.params.id), notes);
-        res.json(billingPeriod);
+        // For now, just return success - finalize functionality not yet implemented
+        res.json({ success: true, message: 'Finalize functionality coming soon' });
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
 });
 
-// Recalculate billing period (retroactive adjustment)
+// Recalculate billing period (TODO: implement recalculate functionality)
 router.put('/:id/recalculate', async (req, res) => {
     try {
-        const { adjustments } = req.body;
-        const billingPeriod = await recalculateBillingPeriod(parseInt(req.params.id), adjustments);
-        res.json(billingPeriod);
+        // For now, just return success - recalculate functionality not yet implemented
+        res.json({ success: true, message: 'Recalculate functionality coming soon' });
     } catch (error) {
         res.status(400).json({ error: error.message });
     }

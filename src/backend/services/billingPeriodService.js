@@ -16,278 +16,244 @@ import { calculateAllocations } from './calculationService.js';
  * @returns {Promise<Object>} - Billing period details
  */
 export const createBillingPeriod = async (propertyId, month, year, options = {}) => {
-    return new Promise((resolve, reject) => {
-        const { notes = '', force = false } = options;
+    const { notes = '', force = false } = options;
+    
+    try {
+        // Check if billing period already exists
+        const existingResult = await db.query(
+            'SELECT id FROM billing_periods WHERE property_id = $1 AND month = $2 AND year = $3',
+            [propertyId, month, year]
+        );
         
-        // Check if billing period already exists and is finalized
-        db.get(
-            'SELECT * FROM billing_periods WHERE property_id = ? AND month = ? AND year = ?',
-            [propertyId, month, year],
-            (err, existing) => {
-                if (err) return reject(err);
-                
-                if (existing && existing.calculation_status === 'finalized' && !force) {
-                    return reject(new Error('Billing period is already finalized. Use force=true to override.'));
-                }
-                
-                // Get all tenants for the property in this period
-                db.all(
-                    'SELECT * FROM tenants WHERE property_id = ?',
-                    [propertyId],
-                    (err, tenants) => {
-                        if (err) return reject(err);
-                        
-                        // Calculate total rent for the period
-                        let totalRentCalculated = 0;
-                        tenants.forEach(tenant => {
-                            const rentCalc = calculateProportionalRent(
-                                tenant.rent_amount,
-                                tenant.move_in_date,
-                                tenant.move_out_date,
-                                year,
-                                month
-                            );
-                            totalRentCalculated += rentCalc.proRatedAmount;
-                        });
-                        
-                        // Get utilities for this period
-                        db.all(
-                            'SELECT * FROM utility_entries WHERE property_id = ? AND month = ? AND year = ?',
-                            [propertyId, month, year],
-                            (err, utilities) => {
-                                if (err) return reject(err);
-                                
-                                const totalUtilitiesCalculated = utilities.reduce((sum, u) => sum + u.total_amount, 0);
-                                
-                                // Insert or update billing period
-                                const query = existing 
-                                    ? 'UPDATE billing_periods SET total_rent_calculated = ?, total_utilities_calculated = ?, calculation_status = ?, calculation_date = CURRENT_TIMESTAMP, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-                                    : 'INSERT INTO billing_periods (property_id, month, year, total_rent_calculated, total_utilities_calculated, calculation_status, calculation_date, notes) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)';
-                                
-                                const params = existing
-                                    ? [totalRentCalculated, totalUtilitiesCalculated, 'calculated', notes, existing.id]
-                                    : [propertyId, month, year, totalRentCalculated, totalUtilitiesCalculated, 'calculated', notes];
-                                
-                                db.run(query, params, function(err) {
-                                    if (err) return reject(err);
-                                    
-                                    const billingPeriodId = existing ? existing.id : this.lastID;
-                                    
-                                    // Create audit trail entry
-                                    createAuditTrail(billingPeriodId, 'billing_period_calculated', {
-                                        total_rent: totalRentCalculated,
-                                        total_utilities: totalUtilitiesCalculated,
-                                        tenant_count: tenants.length,
-                                        utility_count: utilities.length
-                                    });
-                                    
-                                    resolve({
-                                        id: billingPeriodId,
-                                        property_id: propertyId,
-                                        month,
-                                        year,
-                                        total_rent_calculated: totalRentCalculated,
-                                        total_utilities_calculated: totalUtilitiesCalculated,
-                                        calculation_status: 'calculated',
-                                        notes
-                                    });
-                                });
-                            }
-                        );
-                    }
-                );
-            }
+        if (existingResult.rows.length > 0 && !force) {
+            throw new Error(`Billing period already exists for ${month}/${year}`);
+        }
+        
+        // Get all tenants for this property during the billing period
+        const tenantsResult = await db.query(
+            `SELECT t.*, 
+                    p.house_area,
+                    CASE 
+                        WHEN t.move_in_date <= $3 AND (t.move_out_date IS NULL OR t.move_out_date >= $2) 
+                        THEN true 
+                        ELSE false 
+                    END as was_present
+             FROM tenants t
+             JOIN properties p ON t.property_id = p.id  
+             WHERE t.property_id = $1`,
+            [propertyId, `${year}-${month.toString().padStart(2, '0')}-01`, `${year}-${month.toString().padStart(2, '0')}-31`]
         );
-    });
+        
+        const tenants = tenantsResult.rows.filter(t => t.was_present);
+        
+        // Get utility entries for this billing period
+        const utilitiesResult = await db.query(
+            `SELECT ue.*, COUNT(tua.id) as allocation_count
+             FROM utility_entries ue
+             LEFT JOIN tenant_utility_allocations tua ON ue.id = tua.utility_entry_id
+             WHERE ue.property_id = $1 AND ue.month = $2 AND ue.year = $3
+             GROUP BY ue.id`,
+            [propertyId, month, year]
+        );
+        const utilities = utilitiesResult.rows;
+        
+        // Calculate billing details
+        const billingDetails = {
+            property_id: propertyId,
+            month,
+            year, 
+            tenant_count: tenants.length,
+            total_rent: tenants.reduce((sum, t) => {
+                const rentCalc = calculateProportionalRent(t.rent_amount, t.move_in_date, t.move_out_date, year, month);
+                return sum + (rentCalc.isFullMonth ? rentCalc.monthlyRent : rentCalc.proRatedAmount);
+            }, 0),
+            total_utilities: utilities.reduce((sum, u) => sum + parseFloat(u.total_amount), 0),
+            notes,
+            created_at: new Date().toISOString()
+        };
+        
+        // Insert or update billing period
+        const query = existingResult.rows.length > 0 
+            ? 'UPDATE billing_periods SET tenant_count=$2, total_rent=$3, total_utilities=$4, notes=$5, updated_at=CURRENT_TIMESTAMP WHERE property_id=$1 AND month=$6 AND year=$7 RETURNING id'
+            : 'INSERT INTO billing_periods (property_id, month, year, tenant_count, total_rent, total_utilities, notes) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id';
+            
+        const params = existingResult.rows.length > 0
+            ? [propertyId, billingDetails.tenant_count, billingDetails.total_rent, billingDetails.total_utilities, notes, month, year]
+            : [propertyId, month, year, billingDetails.tenant_count, billingDetails.total_rent, billingDetails.total_utilities, notes];
+            
+        const result = await db.query(query, params);
+        const billingPeriodId = result.rows[0].id;
+        
+        // Create audit trail
+        await createAuditTrail(billingPeriodId, existingResult.rows.length > 0 ? 'updated' : 'created', {
+            tenant_count: billingDetails.tenant_count,
+            total_rent: billingDetails.total_rent,
+            total_utilities: billingDetails.total_utilities,
+            force_update: force
+        });
+        
+        // Ensure all utilities have allocations calculated
+        for (const utility of utilities) {
+            if (utility.allocation_count === 0) {
+                await calculateAllocations(utility.id);
+            }
+        }
+        
+        return {
+            id: billingPeriodId,
+            ...billingDetails,
+            tenants,
+            utilities
+        };
+        
+    } catch (error) {
+        console.error('Error creating billing period:', error);
+        throw error;
+    }
 };
 
 /**
- * Finalize a billing period (prevent further changes)
- * @param {number} billingPeriodId - Billing period ID
- * @param {string} notes - Optional finalization notes
- * @returns {Promise<Object>} - Updated billing period
- */
-export const finalizeBillingPeriod = async (billingPeriodId, notes = '') => {
-    return new Promise((resolve, reject) => {
-        db.run(
-            'UPDATE billing_periods SET calculation_status = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-            ['finalized', notes, billingPeriodId],
-            function(err) {
-                if (err) return reject(err);
-                
-                if (this.changes === 0) {
-                    return reject(new Error('Billing period not found'));
-                }
-                
-                // Create audit trail
-                createAuditTrail(billingPeriodId, 'billing_period_finalized', { notes });
-                
-                // Get updated billing period
-                db.get(
-                    'SELECT * FROM billing_periods WHERE id = ?',
-                    [billingPeriodId],
-                    (err, row) => {
-                        if (err) return reject(err);
-                        resolve(row);
-                    }
-                );
-            }
-        );
-    });
-};
-
-/**
- * Get billing periods with filtering and pagination
- * @param {Object} filters - Filter options
+ * Get billing periods for a property
+ * @param {number} propertyId - Property ID
+ * @param {Object} options - Query options
  * @returns {Promise<Array>} - Billing periods
  */
-export const getBillingPeriods = async (filters = {}) => {
-    return new Promise((resolve, reject) => {
-        const { propertyId, status, year, limit = 50, offset = 0 } = filters;
-        
-        let query = `
-            SELECT bp.*, p.name as property_name 
-            FROM billing_periods bp
-            JOIN properties p ON bp.property_id = p.id
-            WHERE 1=1
-        `;
-        const params = [];
-        
-        if (propertyId) {
-            query += ' AND bp.property_id = ?';
-            params.push(propertyId);
-        }
-        
-        if (status) {
-            query += ' AND bp.calculation_status = ?';
-            params.push(status);
-        }
-        
-        if (year) {
-            query += ' AND bp.year = ?';
-            params.push(year);
-        }
-        
-        query += ' ORDER BY bp.year DESC, bp.month DESC, bp.property_id LIMIT ? OFFSET ?';
-        params.push(limit, offset);
-        
-        db.all(query, params, (err, rows) => {
-            if (err) return reject(err);
-            resolve(rows);
-        });
-    });
+export const getBillingPeriods = async (propertyId, options = {}) => {
+    const { limit = 12, includeDetails = false } = options;
+    
+    let query = `
+        SELECT bp.*, p.name as property_name
+        FROM billing_periods bp
+        JOIN properties p ON bp.property_id = p.id
+        WHERE bp.property_id = $1
+        ORDER BY bp.year DESC, bp.month DESC
+        LIMIT $2
+    `;
+    
+    const result = await db.query(query, [propertyId, limit]);
+    
+    if (!includeDetails) {
+        return result.rows;
+    }
+    
+    // Include tenant and utility details for each billing period
+    const periodsWithDetails = await Promise.all(
+        result.rows.map(async (period) => {
+            // Get tenants for this billing period
+            const tenantsResult = await db.query(
+                `SELECT t.*
+                 FROM tenants t
+                 WHERE t.property_id = $1
+                 AND t.move_in_date <= $2
+                 AND (t.move_out_date IS NULL OR t.move_out_date >= $3)`,
+                [
+                    propertyId,
+                    `${period.year}-${period.month.toString().padStart(2, '0')}-31`,
+                    `${period.year}-${period.month.toString().padStart(2, '0')}-01`
+                ]
+            );
+            
+            // Get utilities for this billing period
+            const utilitiesResult = await db.query(
+                `SELECT ue.*
+                 FROM utility_entries ue
+                 WHERE ue.property_id = $1 AND ue.month = $2 AND ue.year = $3`,
+                [propertyId, period.month, period.year]
+            );
+            
+            return {
+                ...period,
+                tenants: tenantsResult.rows,
+                utilities: utilitiesResult.rows
+            };
+        })
+    );
+    
+    return periodsWithDetails;
 };
 
 /**
- * Create an audit trail entry
+ * Create audit trail entry
  * @param {number} billingPeriodId - Billing period ID
- * @param {string} action - Action type
+ * @param {string} action - Action taken
  * @param {Object} details - Action details
  */
-const createAuditTrail = (billingPeriodId, action, details = {}) => {
-    // Create audit trail table if it doesn't exist
-    db.run(`
-        CREATE TABLE IF NOT EXISTS billing_audit_trail (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            billing_period_id INTEGER NOT NULL,
-            action TEXT NOT NULL,
-            details TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (billing_period_id) REFERENCES billing_periods (id) ON DELETE CASCADE
-        )
-    `, (err) => {
-        if (err) {
-            console.error('Error creating audit trail table:', err);
-            return;
-        }
+const createAuditTrail = async (billingPeriodId, action, details = {}) => {
+    try {
+        // Create audit trail table if it doesn't exist
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS billing_audit_trail (
+                id BIGSERIAL PRIMARY KEY,
+                billing_period_id INTEGER NOT NULL,
+                action TEXT NOT NULL,
+                details TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (billing_period_id) REFERENCES billing_periods (id) ON DELETE CASCADE
+            )
+        `);
         
         // Insert audit trail entry
-        db.run(
-            'INSERT INTO billing_audit_trail (billing_period_id, action, details) VALUES (?, ?, ?)',
-            [billingPeriodId, action, JSON.stringify(details)],
-            (err) => {
-                if (err) {
-                    console.error('Error creating audit trail entry:', err);
-                }
-            }
+        await db.query(
+            'INSERT INTO billing_audit_trail (billing_period_id, action, details) VALUES ($1, $2, $3)',
+            [billingPeriodId, action, JSON.stringify(details)]
         );
-    });
+    } catch (err) {
+        console.error('Error creating audit trail:', err);
+    }
 };
 
 /**
- * Get audit trail for a billing period
- * @param {number} billingPeriodId - Billing period ID
+ * Get audit trail for billing periods
+ * @param {number} propertyId - Property ID
+ * @param {Object} options - Query options
  * @returns {Promise<Array>} - Audit trail entries
  */
-export const getBillingAuditTrail = async (billingPeriodId) => {
-    return new Promise((resolve, reject) => {
-        db.all(
-            'SELECT * FROM billing_audit_trail WHERE billing_period_id = ? ORDER BY created_at DESC',
-            [billingPeriodId],
-            (err, rows) => {
-                if (err) return reject(err);
-                
-                // Parse details JSON
-                const auditTrail = rows.map(row => ({
-                    ...row,
-                    details: JSON.parse(row.details || '{}')
-                }));
-                
-                resolve(auditTrail);
-            }
-        );
-    });
+export const getBillingAuditTrail = async (propertyId, options = {}) => {
+    const { limit = 50 } = options;
+    
+    const result = await db.query(
+        `SELECT bat.*, bp.month, bp.year, p.name as property_name
+         FROM billing_audit_trail bat
+         JOIN billing_periods bp ON bat.billing_period_id = bp.id
+         JOIN properties p ON bp.property_id = p.id
+         WHERE bp.property_id = $1
+         ORDER BY bat.created_at DESC
+         LIMIT $2`,
+        [propertyId, limit]
+    );
+    
+    return result.rows.map(row => ({
+        ...row,
+        details: row.details ? JSON.parse(row.details) : {}
+    }));
 };
 
 /**
- * Recalculate billing period (retroactive adjustment)
- * @param {number} billingPeriodId - Billing period ID
- * @param {Object} adjustments - Manual adjustments
- * @returns {Promise<Object>} - Updated billing period
+ * Get billing summary for a specific period
+ * @param {number} propertyId - Property ID
+ * @param {number} month - Month
+ * @param {number} year - Year
+ * @returns {Promise<Object>} - Billing summary
  */
-export const recalculateBillingPeriod = async (billingPeriodId, adjustments = {}) => {
-    return new Promise((resolve, reject) => {
-        // Get existing billing period
-        db.get(
-            'SELECT * FROM billing_periods WHERE id = ?',
-            [billingPeriodId],
-            async (err, billingPeriod) => {
-                if (err) return reject(err);
-                if (!billingPeriod) return reject(new Error('Billing period not found'));
-                
-                if (billingPeriod.calculation_status === 'finalized') {
-                    return reject(new Error('Cannot recalculate finalized billing period'));
-                }
-                
-                try {
-                    // Create audit trail for recalculation
-                    createAuditTrail(billingPeriodId, 'billing_period_recalculated', {
-                        previous_rent: billingPeriod.total_rent_calculated,
-                        previous_utilities: billingPeriod.total_utilities_calculated,
-                        adjustments
-                    });
-                    
-                    // Recalculate using createBillingPeriod with force=true
-                    const updated = await createBillingPeriod(
-                        billingPeriod.property_id,
-                        billingPeriod.month,
-                        billingPeriod.year,
-                        { force: true, notes: `Recalculated: ${adjustments.reason || 'Manual adjustment'}` }
-                    );
-                    
-                    resolve(updated);
-                } catch (error) {
-                    reject(error);
-                }
-            }
-        );
-    });
+export const getBillingSummary = async (propertyId, month, year) => {
+    const result = await db.query(
+        `SELECT bp.*, p.name as property_name, p.house_area
+         FROM billing_periods bp
+         JOIN properties p ON bp.property_id = p.id
+         WHERE bp.property_id = $1 AND bp.month = $2 AND bp.year = $3`,
+        [propertyId, month, year]
+    );
+    
+    if (result.rows.length === 0) {
+        return null;
+    }
+    
+    return result.rows[0];
 };
 
 export default {
     createBillingPeriod,
-    finalizeBillingPeriod,
     getBillingPeriods,
     getBillingAuditTrail,
-    recalculateBillingPeriod
+    getBillingSummary
 };

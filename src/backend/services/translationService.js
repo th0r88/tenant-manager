@@ -10,7 +10,7 @@ export const translations = {
       statementDate: 'Datum obračuna',
       billingPeriod: 'Obračunsko obdobje',
       tenant: 'Najemnik',
-      chargesBreakdown: 'RAZČLENITEV STROŠKOV',
+      chargesBreakdown: 'OBRAČUN',
       monthlyRent: 'MESEČNA NAJEMNINA',
       utilityCharges: 'STROŠKI',
       totalAmountDue: 'SKUPAJ ZA PLAČILO',
