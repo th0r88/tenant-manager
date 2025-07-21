@@ -91,4 +91,58 @@ router.get('/:month/:year', async (req, res) => {
     }
 });
 
+// Recalculate allocations for all utilities (useful after calculation logic changes)
+router.post('/recalculate-all', async (req, res) => {
+    try {
+        const { property_id = 1, month, year } = req.body;
+        
+        // Get utilities to recalculate (can filter by property, month, year)
+        let query = 'SELECT id, utility_type, month, year FROM utility_entries WHERE property_id = $1';
+        let params = [property_id];
+        
+        if (month) {
+            query += ' AND month = $2';
+            params.push(month);
+        }
+        if (year) {
+            query += month ? ' AND year = $3' : ' AND year = $2';
+            params.push(year);
+        }
+        
+        query += ' ORDER BY year, month';
+        
+        const utilitiesResult = await db.query(query, params);
+        const utilities = utilitiesResult.rows;
+        
+        let recalculated = 0;
+        let errors = [];
+        
+        for (const utility of utilities) {
+            try {
+                await calculateAllocations(utility.id);
+                recalculated++;
+                console.log(`Recalculated ${utility.utility_type} for ${utility.month}/${utility.year}`);
+            } catch (error) {
+                console.error(`Failed to recalculate utility ${utility.id}:`, error);
+                errors.push(`${utility.utility_type} ${utility.month}/${utility.year}: ${error.message}`);
+            }
+        }
+        
+        res.json({
+            success: true,
+            message: `Recalculation completed for property ${property_id}`,
+            recalculated,
+            total: utilities.length,
+            errors
+        });
+        
+    } catch (error) {
+        console.error('Bulk recalculation error:', error);
+        res.status(500).json({ 
+            error: 'Bulk recalculation failed', 
+            details: error.message 
+        });
+    }
+});
+
 export default router;

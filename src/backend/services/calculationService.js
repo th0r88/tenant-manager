@@ -52,30 +52,42 @@ export const calculateAllocations = async (utilityEntryId) => {
         let allocations = [];
 
         if (utility.allocation_method === 'per_person') {
-            // Calculate proportional person-days for each tenant
-            let totalPersonDays = 0;
-            const tenantPersonDays = [];
+            // Calculate simple per-person allocation
+            let totalPeople = 0;
+            const tenantPeopleData = [];
 
             for (const tenant of tenants) {
+                // Only include tenants who were present during the month
                 const occupiedDays = calculateOccupiedDays(
                     tenant.move_in_date,
                     tenant.move_out_date,
                     utility.year,
                     utility.month
                 );
-                const personDays = occupiedDays * (tenant.number_of_people || 1);
-                tenantPersonDays.push({ tenant, personDays });
-                totalPersonDays += personDays;
+                
+                if (occupiedDays > 0) {
+                    const numberOfPeople = tenant.number_of_people || 1;
+                    tenantPeopleData.push({ tenant, numberOfPeople, occupiedDays });
+                    totalPeople += numberOfPeople;
+                }
             }
 
-            if (totalPersonDays === 0) {
-                throw new Error('No person-days found for per-person allocation');
+            if (totalPeople === 0) {
+                throw new Error('No people found for per-person allocation');
             }
 
-            // Allocate based on proportional person-days
-            for (const { tenant, personDays } of tenantPersonDays) {
-                const proportion = personDays / totalPersonDays;
-                const allocatedAmount = precisionMath.multiply(utility.total_amount, proportion);
+            // Allocate based on number of people (simple division)
+            const costPerPerson = precisionMath.divide(utility.total_amount, totalPeople);
+            
+            for (const { tenant, numberOfPeople, occupiedDays } of tenantPeopleData) {
+                let allocatedAmount = precisionMath.multiply(costPerPerson, numberOfPeople);
+                
+                // If tenant was not there for the full month, prorate their allocation
+                if (occupiedDays < new Date(utility.year, utility.month, 0).getDate()) {
+                    const daysInMonth = new Date(utility.year, utility.month, 0).getDate();
+                    const occupancyRatio = occupiedDays / daysInMonth;
+                    allocatedAmount = precisionMath.multiply(allocatedAmount, occupancyRatio);
+                }
                 
                 allocations.push({
                     tenant_id: tenant.id,
@@ -85,10 +97,16 @@ export const calculateAllocations = async (utilityEntryId) => {
             }
 
         } else if (utility.allocation_method === 'per_sqm') {
-            // Calculate proportional sqm-days for each tenant
-            let totalSqmDays = 0;
-            const tenantSqmDays = [];
-
+            // Calculate per-sqm allocation based on total house area
+            const houseArea = parseFloat(tenants[0]?.house_area) || 0;
+            
+            if (houseArea === 0) {
+                throw new Error('Property house area not found for per-sqm allocation');
+            }
+            
+            // Calculate cost per square meter based on total house area
+            const costPerSqm = precisionMath.divide(utility.total_amount, houseArea);
+            
             for (const tenant of tenants) {
                 const occupiedDays = calculateOccupiedDays(
                     tenant.move_in_date,
@@ -96,25 +114,24 @@ export const calculateAllocations = async (utilityEntryId) => {
                     utility.year,
                     utility.month
                 );
-                const sqmDays = occupiedDays * (parseFloat(tenant.room_area) || 0);
-                tenantSqmDays.push({ tenant, sqmDays });
-                totalSqmDays += sqmDays;
-            }
-
-            if (totalSqmDays === 0) {
-                throw new Error('No sqm-days found for per-sqm allocation');
-            }
-
-            // Allocate based on proportional sqm-days
-            for (const { tenant, sqmDays } of tenantSqmDays) {
-                const proportion = sqmDays / totalSqmDays;
-                const allocatedAmount = precisionMath.multiply(utility.total_amount, proportion);
                 
-                allocations.push({
-                    tenant_id: tenant.id,
-                    utility_entry_id: utilityEntryId,
-                    allocated_amount: parseFloat(allocatedAmount.toFixed(2))
-                });
+                if (occupiedDays > 0) {
+                    const tenantRoomArea = parseFloat(tenant.room_area) || 0;
+                    let allocatedAmount = precisionMath.multiply(costPerSqm, tenantRoomArea);
+                    
+                    // If tenant was not there for the full month, prorate their allocation
+                    if (occupiedDays < new Date(utility.year, utility.month, 0).getDate()) {
+                        const daysInMonth = new Date(utility.year, utility.month, 0).getDate();
+                        const occupancyRatio = occupiedDays / daysInMonth;
+                        allocatedAmount = precisionMath.multiply(allocatedAmount, occupancyRatio);
+                    }
+                    
+                    allocations.push({
+                        tenant_id: tenant.id,
+                        utility_entry_id: utilityEntryId,
+                        allocated_amount: parseFloat(allocatedAmount.toFixed(2))
+                    });
+                }
             }
 
         } else {
