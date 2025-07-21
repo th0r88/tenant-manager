@@ -129,10 +129,7 @@ CREATE TRIGGER update_billing_periods_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- Insert default property if none exists
-INSERT INTO properties (name, address, property_type, house_area, number_of_tenants)
-SELECT 'Default Property', 'Default Address', 'apartment', 100.0, 1
-WHERE NOT EXISTS (SELECT 1 FROM properties WHERE id = 1);
+-- Default property insertion is handled by migration scripts to avoid duplicates
 
 -- Grant table permissions to tenant_user
 -- GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO tenant_user;
