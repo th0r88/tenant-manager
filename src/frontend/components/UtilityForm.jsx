@@ -3,21 +3,43 @@ import { useTranslation } from '../hooks/useTranslation';
 
 export default function UtilityForm({ onSubmit, initialData = {}, onCancel, selectedProperty, onUtilityAdded }) {
     const { t, getMonthNames, getUtilityTypes } = useTranslation();
-    const [formData, setFormData] = useState({
-        month: new Date().getMonth() + 1,
-        year: new Date().getFullYear(),
-        utility_type: '',
-        total_amount: '',
-        allocation_method: 'per_person'
+    
+    // Helper function to get previous month
+    const getPreviousMonth = () => {
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        
+        let prevMonth = currentMonth - 1;
+        let prevYear = currentYear;
+        
+        if (prevMonth === 0) {
+            prevMonth = 12;
+            prevYear = currentYear - 1;
+        }
+        
+        return { month: prevMonth, year: prevYear };
+    };
+    
+    const [formData, setFormData] = useState(() => {
+        const { month, year } = getPreviousMonth();
+        return {
+            month,
+            year,
+            utility_type: '',
+            total_amount: '',
+            allocation_method: 'per_person'
+        };
     });
 
     useEffect(() => {
         if (initialData && initialData.id) {
             setFormData(initialData);
         } else {
+            const { month, year } = getPreviousMonth();
             setFormData({
-                month: new Date().getMonth() + 1,
-                year: new Date().getFullYear(),
+                month,
+                year,
                 utility_type: '',
                 total_amount: '',
                 allocation_method: 'per_person'

@@ -109,27 +109,8 @@ router.get('/summary/:month/:year', async (req, res) => {
                 parseInt(month)
             );
             
-            // Calculate proportional utilities from previous month
-            let utilities_total = utilitiesMap[tenant.id] || 0;
-            let utilities_prorated = false;
-            
-            if (utilities_total > 0) {
-                // Check if tenant moved in during the previous month
-                const prevUtilityCalculation = calculateProportionalRent(
-                    1, // We use 1 as base to get the proportion ratio
-                    tenant.move_in_date, 
-                    tenant.move_out_date, 
-                    prevYear, 
-                    prevMonth
-                );
-                
-                // If tenant wasn't there for the full previous month, prorate utilities
-                if (!prevUtilityCalculation.isFullMonth && prevUtilityCalculation.occupiedDays > 0) {
-                    const proportionRatio = prevUtilityCalculation.occupiedDays / prevUtilityCalculation.totalDaysInMonth;
-                    utilities_total = utilities_total * proportionRatio;
-                    utilities_prorated = true;
-                }
-            }
+            // Get utilities total from previous month (already prorated by calculationService)
+            const utilities_total = utilitiesMap[tenant.id] || 0;
             
             // Calculate final amounts
             const currentMonthRent = rentCalculation.isFullMonth ? 
@@ -143,7 +124,6 @@ router.get('/summary/:month/:year', async (req, res) => {
                 total_due: parseFloat(currentMonthRent) + parseFloat(utilities_total),
                 // Additional info for debugging
                 is_rent_prorated: !rentCalculation.isFullMonth,
-                is_utilities_prorated: utilities_prorated,
                 occupied_days_current: rentCalculation.occupiedDays,
                 total_days_current: rentCalculation.totalDaysInMonth
             };
@@ -278,8 +258,8 @@ router.post('/batch-export', async (req, res) => {
 
         for (const tenantId of tenantIds) {
             try {
-                // Get tenant data
-                const tenantResult = await db.query('SELECT * FROM tenants WHERE id = $1', [tenantId]);
+                // Get tenant data with property name
+                const tenantResult = await db.query('SELECT t.*, p.name as property_name FROM tenants t JOIN properties p ON t.property_id = p.id WHERE t.id = $1', [tenantId]);
                 const tenant = tenantResult.rows[0];
 
                 if (!tenant) {
@@ -432,8 +412,8 @@ router.post('/batch-export-stream', async (req, res) => {
             try {
                 sendProgress(processedCount, totalCount, `Processing tenant ${tenantId}...`);
 
-                // Get tenant data
-                const tenantResult = await db.query('SELECT * FROM tenants WHERE id = $1', [tenantId]);
+                // Get tenant data with property name
+                const tenantResult = await db.query('SELECT t.*, p.name as property_name FROM tenants t JOIN properties p ON t.property_id = p.id WHERE t.id = $1', [tenantId]);
                 const tenant = tenantResult.rows[0];
 
                 if (!tenant) {

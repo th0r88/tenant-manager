@@ -34,10 +34,25 @@ function AppContent() {
     const [success, setSuccess] = useState('');
     const [successVisible, setSuccessVisible] = useState(false);
     const { error: apiError, isLoading: globalLoading, handleApiCall, clearError } = useApiErrorHandler();
-    const [utilityFilter, setUtilityFilter] = useState({
-        month: (new Date().getMonth() + 1).toString(),
-        year: new Date().getFullYear().toString(),
-        utility_type: ''
+    const [utilityFilter, setUtilityFilter] = useState(() => {
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1; // getMonth() returns 0-11, so add 1
+        const currentYear = now.getFullYear();
+        
+        // Calculate previous month
+        let prevMonth = currentMonth - 1;
+        let prevYear = currentYear;
+        
+        if (prevMonth === 0) {
+            prevMonth = 12;
+            prevYear = currentYear - 1;
+        }
+        
+        return {
+            month: prevMonth.toString(),
+            year: prevYear.toString(),
+            utility_type: ''
+        };
     });
     const [isPropertyDropdownOpen, setIsPropertyDropdownOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
