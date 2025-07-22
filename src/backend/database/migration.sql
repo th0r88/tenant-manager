@@ -4,9 +4,11 @@
 -- Set UTF-8 encoding for the database
 PRAGMA encoding = "UTF-8";
 
--- Create default property for existing data
+-- Create default property for existing data only if there are tenants but no properties
 INSERT OR IGNORE INTO properties (id, name, address, property_type) 
-VALUES (1, 'Default Property', 'Main Property Address', 'Building');
+SELECT 1, 'Default Property', 'Main Property Address', 'Building'
+WHERE EXISTS (SELECT 1 FROM tenants LIMIT 1) 
+  AND NOT EXISTS (SELECT 1 FROM properties LIMIT 1);
 
 -- Add property_id column to existing tenants table (if not exists)
 ALTER TABLE tenants ADD COLUMN property_id INTEGER DEFAULT 1;

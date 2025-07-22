@@ -142,7 +142,7 @@ export default function Dashboard() {
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="font-medium">{t('dashboard.totalArea')}</span>
-                                                <span>{property.total_area} m²</span>
+                                                <span>{property.total_tenant_area} m²</span>
                                             </div>
                                         </div>
                                     </div>

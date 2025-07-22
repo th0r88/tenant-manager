@@ -1,9 +1,11 @@
 -- Migration script to add multi-property support (PostgreSQL version)
 -- Run this after updating schema
 
--- Create default property for existing data (PostgreSQL uses ON CONFLICT instead of INSERT OR IGNORE)
+-- Create default property for existing data only if there are tenants but no properties
 INSERT INTO properties (id, name, address, property_type) 
-VALUES (1, 'Default Property', 'Main Property Address', 'Building')
+SELECT 1, 'Default Property', 'Main Property Address', 'Building'
+WHERE EXISTS (SELECT 1 FROM tenants LIMIT 1) 
+  AND NOT EXISTS (SELECT 1 FROM properties LIMIT 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- Add property_id column to existing tenants table (PostgreSQL syntax)
