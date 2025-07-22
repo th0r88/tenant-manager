@@ -6,35 +6,19 @@ import archiver from 'archiver';
 import path from 'path';
 import { promisify } from 'util';
 
-// Helper function to calculate proportional utilities
+// Helper function to sum utilities (proration is already handled in calculationService)
 function calculateProportionalUtilities(tenant, utilities, prevYear, prevMonth) {
     let utilities_total = 0;
-    let utilities_prorated = false;
     
     if (utilities && utilities.length > 0) {
-        // Sum up all utility allocations
+        // Simply sum up all utility allocations - they are already correctly calculated
+        // with proper per-person/per-sqm logic and proration applied in calculationService
         utilities_total = utilities.reduce((sum, utility) => sum + (parseFloat(utility.allocated_amount) || 0), 0);
-        
-        // Check if tenant moved in during the previous month
-        const prevUtilityCalculation = calculateProportionalRent(
-            1, // We use 1 as base to get the proportion ratio
-            tenant.move_in_date, 
-            tenant.move_out_date, 
-            prevYear, 
-            prevMonth
-        );
-        
-        // If tenant wasn't there for the full previous month, prorate utilities
-        if (!prevUtilityCalculation.isFullMonth && prevUtilityCalculation.occupiedDays > 0) {
-            const proportionRatio = prevUtilityCalculation.occupiedDays / prevUtilityCalculation.totalDaysInMonth;
-            utilities_total = utilities_total * proportionRatio;
-            utilities_prorated = true;
-        }
     }
     
     return {
         utilities_total: Math.round(utilities_total * 100) / 100,
-        utilities_prorated,
+        utilities_prorated: false, // Proration was already applied during initial calculation
         utilities_original: utilities || []
     };
 }
