@@ -52,9 +52,9 @@ export const calculateAllocations = async (utilityEntryId) => {
         let allocations = [];
 
         if (utility.allocation_method === 'per_person') {
-            // Calculate simple per-person allocation
-            let totalPeople = 0;
-            const tenantPeopleData = [];
+            // Calculate person-days weighted allocation
+            let totalPersonDays = 0;
+            const tenantPersonDaysData = [];
 
             for (const tenant of tenants) {
                 // Only include tenants who were present during the month
@@ -67,27 +67,21 @@ export const calculateAllocations = async (utilityEntryId) => {
                 
                 if (occupiedDays > 0) {
                     const numberOfPeople = tenant.number_of_people || 1;
-                    tenantPeopleData.push({ tenant, numberOfPeople, occupiedDays });
-                    totalPeople += numberOfPeople;
+                    const personDays = numberOfPeople * occupiedDays;
+                    tenantPersonDaysData.push({ tenant, numberOfPeople, occupiedDays, personDays });
+                    totalPersonDays += personDays;
                 }
             }
 
-            if (totalPeople === 0) {
-                throw new Error('No people found for per-person allocation');
+            if (totalPersonDays === 0) {
+                throw new Error('No person-days found for per-person allocation');
             }
 
-            // Allocate based on number of people (simple division)
-            const costPerPerson = precisionMath.divide(utility.total_amount, totalPeople);
+            // Allocate based on person-days (ensures 100% cost allocation)
+            const costPerPersonDay = precisionMath.divide(utility.total_amount, totalPersonDays);
             
-            for (const { tenant, numberOfPeople, occupiedDays } of tenantPeopleData) {
-                let allocatedAmount = precisionMath.multiply(costPerPerson, numberOfPeople);
-                
-                // If tenant was not there for the full month, prorate their allocation
-                if (occupiedDays < new Date(utility.year, utility.month, 0).getDate()) {
-                    const daysInMonth = new Date(utility.year, utility.month, 0).getDate();
-                    const occupancyRatio = occupiedDays / daysInMonth;
-                    allocatedAmount = precisionMath.multiply(allocatedAmount, occupancyRatio);
-                }
+            for (const { tenant, personDays } of tenantPersonDaysData) {
+                const allocatedAmount = precisionMath.multiply(costPerPersonDay, personDays);
                 
                 allocations.push({
                     tenant_id: tenant.id,
@@ -97,15 +91,9 @@ export const calculateAllocations = async (utilityEntryId) => {
             }
 
         } else if (utility.allocation_method === 'per_sqm') {
-            // Calculate per-sqm allocation based on total house area
-            const houseArea = parseFloat(tenants[0]?.house_area) || 0;
-            
-            if (houseArea === 0) {
-                throw new Error('Property house area not found for per-sqm allocation');
-            }
-            
-            // Calculate cost per square meter based on total house area
-            const costPerSqm = precisionMath.divide(utility.total_amount, houseArea);
+            // Calculate square-meter-days weighted allocation
+            let totalSqmDays = 0;
+            const tenantSqmDaysData = [];
             
             for (const tenant of tenants) {
                 const occupiedDays = calculateOccupiedDays(
@@ -117,25 +105,40 @@ export const calculateAllocations = async (utilityEntryId) => {
                 
                 if (occupiedDays > 0) {
                     const tenantRoomArea = parseFloat(tenant.room_area) || 0;
-                    let allocatedAmount = precisionMath.multiply(costPerSqm, tenantRoomArea);
-                    
-                    // If tenant was not there for the full month, prorate their allocation
-                    if (occupiedDays < new Date(utility.year, utility.month, 0).getDate()) {
-                        const daysInMonth = new Date(utility.year, utility.month, 0).getDate();
-                        const occupancyRatio = occupiedDays / daysInMonth;
-                        allocatedAmount = precisionMath.multiply(allocatedAmount, occupancyRatio);
-                    }
-                    
-                    allocations.push({
-                        tenant_id: tenant.id,
-                        utility_entry_id: utilityEntryId,
-                        allocated_amount: parseFloat(allocatedAmount.toFixed(2))
-                    });
+                    const sqmDays = tenantRoomArea * occupiedDays;
+                    tenantSqmDaysData.push({ tenant, tenantRoomArea, occupiedDays, sqmDays });
+                    totalSqmDays += sqmDays;
                 }
+            }
+            
+            if (totalSqmDays === 0) {
+                throw new Error('No square-meter-days found for per-sqm allocation');
+            }
+            
+            // Allocate based on sqm-days (ensures 100% cost allocation)
+            const costPerSqmDay = precisionMath.divide(utility.total_amount, totalSqmDays);
+            
+            for (const { tenant, sqmDays } of tenantSqmDaysData) {
+                const allocatedAmount = precisionMath.multiply(costPerSqmDay, sqmDays);
+                
+                allocations.push({
+                    tenant_id: tenant.id,
+                    utility_entry_id: utilityEntryId,
+                    allocated_amount: parseFloat(allocatedAmount.toFixed(2))
+                });
             }
 
         } else {
             throw new Error(`Unknown allocation method: ${utility.allocation_method}`);
+        }
+
+        // Validate 100% cost allocation
+        const totalAllocated = allocations.reduce((sum, allocation) => sum + allocation.allocated_amount, 0);
+        const expectedTotal = parseFloat(utility.total_amount);
+        const difference = Math.abs(totalAllocated - expectedTotal);
+        
+        if (difference > 0.01) { // Allow 1 cent tolerance for rounding
+            console.warn(`Allocation mismatch: Expected ${expectedTotal}, got ${totalAllocated}, difference: ${difference}`);
         }
 
         // Insert all allocations
@@ -146,7 +149,7 @@ export const calculateAllocations = async (utilityEntryId) => {
             );
         }
 
-        console.log(`Allocated ${utility.total_amount} ${utility.utility_type} among ${tenants.length} tenants using ${utility.allocation_method} method`);
+        console.log(`Allocated ${utility.total_amount} ${utility.utility_type} among ${tenants.length} tenants using ${utility.allocation_method} method (Total allocated: ${totalAllocated})`);
         
         return allocations;
 
