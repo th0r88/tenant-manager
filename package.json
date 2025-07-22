@@ -1,6 +1,6 @@
 {
   "name": "tenant-manager",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
