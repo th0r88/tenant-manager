@@ -301,8 +301,20 @@ export const PDF_UTILS = {
 
     // Draw data rows
     data.forEach((row, index) => {
-      // Alternating row colors
-      const rowColor = index % 2 === 0 ? evenRowColor : oddRowColor;
+      // Check if this is the total row and add double line separator
+      if (row.isTotal && options.totalRowSeparator) {
+        // Draw double line separator before total row
+        const separatorY = currentY - 2;
+        doc.moveTo(x, separatorY)
+           .lineTo(x + tableWidth, separatorY)
+           .stroke(borderRgb);
+        doc.moveTo(x, separatorY + 2)
+           .lineTo(x + tableWidth, separatorY + 2)
+           .stroke(borderRgb);
+      }
+      
+      // Alternating row colors (but make total row white/highlighted)
+      const rowColor = row.isTotal ? PDF_STYLES.colors.white : (index % 2 === 0 ? evenRowColor : oddRowColor);
       const rowRgb = this.hexToRgb(rowColor);
       doc.rect(x, currentY, tableWidth, rowHeight)
          .fill(rowRgb);
@@ -312,7 +324,8 @@ export const PDF_UTILS = {
       columns.forEach(column => {
         const cellValue = row[column.key] || '';
         const textColor = column.color || PDF_STYLES.colors.text;
-        const textAlign = column.align || 'left';
+        // Check for alignment override for specific rows (like total row)
+        const textAlign = (row.alignOverride && row.alignOverride[column.key]) || column.align || 'left';
         
         let textX = currentX + 5;
         if (textAlign === 'right') {
@@ -324,7 +337,7 @@ export const PDF_UTILS = {
         this.addStyledText(doc, cellValue, textX, currentY + 4, {
           fontSize: fontSize,
           color: textColor,
-          font: column.bold ? PDF_STYLES.fonts.secondary : PDF_STYLES.fonts.primary
+          font: (column.bold || row.isTotal) ? PDF_STYLES.fonts.secondary : PDF_STYLES.fonts.primary
         });
 
         currentX += column.width;

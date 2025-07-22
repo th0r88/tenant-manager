@@ -168,15 +168,10 @@ router.get('/:tenantId/:month/:year', async (req, res) => {
         // Calculate proportional utilities if tenant moved in during previous month
         const proportionalUtilities = calculateProportionalUtilities(tenant, utilities, prevYear, prevMonth);
         
-        // Create modified utilities array with proportional amounts
-        const originalTotal = utilities.reduce((sum, u) => sum + parseFloat(u.allocated_amount), 0);
+        // Use already-correctly-prorated utilities (no double proration)
         const modifiedUtilities = utilities.map(utility => ({
             ...utility,
-            allocated_amount: (proportionalUtilities.utilities_prorated && originalTotal > 0) ? 
-                (parseFloat(utility.allocated_amount) * 
-                 (proportionalUtilities.utilities_total / originalTotal)
-                ).toFixed(2) : 
-                utility.allocated_amount
+            allocated_amount: utility.allocated_amount  // Already prorated in calculationService
         }));
         
         // Generate PDF with current month but previous month utilities (proportionally adjusted)
@@ -280,15 +275,10 @@ router.post('/batch-export', async (req, res) => {
                 // Calculate proportional utilities if tenant moved in during previous month
                 const proportionalUtilities = calculateProportionalUtilities(tenant, utilities, prevYear, prevMonth);
                 
-                // Create modified utilities array with proportional amounts
-                const originalTotal = utilities.reduce((sum, u) => sum + parseFloat(u.allocated_amount), 0);
+                // Use already-correctly-prorated utilities (no double proration)
                 const modifiedUtilities = utilities.map(utility => ({
                     ...utility,
-                    allocated_amount: (proportionalUtilities.utilities_prorated && originalTotal > 0) ? 
-                        (parseFloat(utility.allocated_amount) * 
-                         (proportionalUtilities.utilities_total / originalTotal)
-                        ).toFixed(2) : 
-                        utility.allocated_amount
+                    allocated_amount: utility.allocated_amount  // Already prorated in calculationService
                 }));
 
                 // Generate PDF with previous month utilities (proportionally adjusted)
@@ -435,15 +425,10 @@ router.post('/batch-export-stream', async (req, res) => {
                 // Calculate proportional utilities if tenant moved in during previous month
                 const proportionalUtilities = calculateProportionalUtilities(tenant, utilities, prevYear, prevMonth);
                 
-                // Create modified utilities array with proportional amounts
-                const originalTotal = utilities.reduce((sum, u) => sum + parseFloat(u.allocated_amount), 0);
+                // Use already-correctly-prorated utilities (no double proration)
                 const modifiedUtilities = utilities.map(utility => ({
                     ...utility,
-                    allocated_amount: (proportionalUtilities.utilities_prorated && originalTotal > 0) ? 
-                        (parseFloat(utility.allocated_amount) * 
-                         (proportionalUtilities.utilities_total / originalTotal)
-                        ).toFixed(2) : 
-                        utility.allocated_amount
+                    allocated_amount: utility.allocated_amount  // Already prorated in calculationService
                 }));
 
                 // Generate PDF with previous month utilities (proportionally adjusted)

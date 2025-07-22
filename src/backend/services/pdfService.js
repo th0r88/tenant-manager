@@ -78,7 +78,7 @@ export async function generateTenantReport(tenant, month, year, utilities, optio
             
             // Billing Details Section (single page)
             if (progressCallback) progressCallback('drawing_billing', { tenantId: tenant.id });
-            currentY = drawBillingSection(doc, currentY, rentCalculation, utilities, month, lang, {
+            currentY = drawBillingSection(doc, currentY, rentCalculation, utilities, month, lang, tenant, {
                 utilitiesFromPreviousMonth,
                 utilitiesProrated,
                 prevMonth,
@@ -123,27 +123,26 @@ function drawHeader(doc, tenant, month, year, language = 'sl') {
     });
     currentY += 15;
     
-    // Tenant full name
-    PDF_UTILS.addStyledText(doc, `${t(language, 'pdf.tenant')}: ${tenant.name} ${tenant.surname}`, pageMargin, currentY, {
-        fontSize: PDF_STYLES.fontSize.body,
-        color: PDF_STYLES.colors.text
-    });
-    currentY += 25;
+    // Removed tenant name from header as requested
+    // currentY += 25;
     
     return currentY;
 }
 
 
 // Simple billing section (single page optimized)
-function drawBillingSection(doc, startY, rentCalculation, utilities, month, language = 'sl', options = {}) {
+function drawBillingSection(doc, startY, rentCalculation, utilities, month, language = 'sl', tenant, options = {}) {
     const { pageMargin, section } = PDF_STYLES.spacing;
     const { subheading } = PDF_STYLES.fontSize;
     const { utilitiesFromPreviousMonth = false, utilitiesProrated = false, prevMonth = null, prevYear = null } = options;
     
     let currentY = startY;
     
-    // Enhanced section header
-    currentY = PDF_UTILS.drawSectionHeader(doc, pageMargin, currentY, t(language, 'pdf.chargesBreakdown')) - PDF_STYLES.spacing.section;
+    // Add spacing break before OBRAČUN section
+    currentY += 20;
+    
+    // Enhanced section header with tenant name
+    currentY = PDF_UTILS.drawSectionHeader(doc, pageMargin, currentY, `${t(language, 'pdf.chargesBreakdown')} - ${tenant.name} ${tenant.surname}`) - PDF_STYLES.spacing.section;
     
     currentY = PDF_UTILS.getNextY(currentY, section);
     
@@ -160,7 +159,7 @@ function drawBillingSection(doc, startY, rentCalculation, utilities, month, lang
     const rentAmount = rentCalculation.isFullMonth ? rentCalculation.monthlyRent : rentCalculation.proRatedAmount;
     
     const rentColumns = [
-        { header: t(language, 'pdf.monthlyRent'), key: 'description', width: 200 },
+        { header: t(language, 'pdf.month'), key: 'description', width: 200 },
         { header: t(language, 'pdf.amount'), key: 'amount', width: 120, align: 'right', headerAlign: 'right', bold: true }
     ];
     
@@ -239,11 +238,25 @@ function drawUtilitiesTableWithPaging(doc, startY, utilities, language = 'sl', o
         };
     });
     
+    // Calculate total of "Tvoj delež" column
+    const utilitiesTotal = utilities.reduce((sum, utility) => {
+        return sum + (parseFloat(utility.allocated_amount) || 0);
+    }, 0);
+    
+    // Add total row to table data  
+    tableData.push({
+        utility_type: t(language, 'pdf.total') + ':',
+        total_amount: '',
+        allocated_amount: formatCurrency(utilitiesTotal, language),
+        isTotal: true  // Flag to identify total row for special styling
+    });
+    
     currentY = PDF_UTILS.drawTable(doc, pageMargin, currentY, columns, tableData, {
         fontSize: PDF_STYLES.fontSize.small,
         headerColor: PDF_STYLES.colors.primaryDark,
         evenRowColor: PDF_STYLES.colors.white,
-        oddRowColor: PDF_STYLES.colors.backgroundDark
+        oddRowColor: PDF_STYLES.colors.backgroundDark,
+        totalRowSeparator: true  // Flag to add double line before total row
     });
     
     return currentY;
