@@ -91,9 +91,15 @@ export const calculateAllocations = async (utilityEntryId) => {
             }
 
         } else if (utility.allocation_method === 'per_sqm') {
-            // Calculate square-meter-days weighted allocation
-            let totalSqmDays = 0;
-            const tenantSqmDaysData = [];
+            // Calculate per-sqm allocation: (HeatingCost ÷ HouseArea) × RoomArea × occupancy ratio
+            const houseArea = parseFloat(tenants[0]?.house_area) || 0;
+            
+            if (houseArea === 0) {
+                throw new Error('Property house area not found for per-sqm allocation');
+            }
+            
+            // Calculate cost per square meter based on total house area
+            const costPerSqm = precisionMath.divide(utility.total_amount, houseArea);
             
             for (const tenant of tenants) {
                 const occupiedDays = calculateOccupiedDays(
@@ -105,27 +111,23 @@ export const calculateAllocations = async (utilityEntryId) => {
                 
                 if (occupiedDays > 0) {
                     const tenantRoomArea = parseFloat(tenant.room_area) || 0;
-                    const sqmDays = tenantRoomArea * occupiedDays;
-                    tenantSqmDaysData.push({ tenant, tenantRoomArea, occupiedDays, sqmDays });
-                    totalSqmDays += sqmDays;
+                    const daysInMonth = new Date(utility.year, utility.month, 0).getDate();
+                    
+                    // Formula: (HeatingCost ÷ HouseArea) × RoomArea × (occupiedDays ÷ daysInMonth)
+                    let allocatedAmount = precisionMath.multiply(costPerSqm, tenantRoomArea);
+                    
+                    // Apply proration if tenant was not there for the full month
+                    if (occupiedDays < daysInMonth) {
+                        const occupancyRatio = occupiedDays / daysInMonth;
+                        allocatedAmount = precisionMath.multiply(allocatedAmount, occupancyRatio);
+                    }
+                    
+                    allocations.push({
+                        tenant_id: tenant.id,
+                        utility_entry_id: utilityEntryId,
+                        allocated_amount: parseFloat(allocatedAmount.toFixed(2))
+                    });
                 }
-            }
-            
-            if (totalSqmDays === 0) {
-                throw new Error('No square-meter-days found for per-sqm allocation');
-            }
-            
-            // Allocate based on sqm-days (ensures 100% cost allocation)
-            const costPerSqmDay = precisionMath.divide(utility.total_amount, totalSqmDays);
-            
-            for (const { tenant, sqmDays } of tenantSqmDaysData) {
-                const allocatedAmount = precisionMath.multiply(costPerSqmDay, sqmDays);
-                
-                allocations.push({
-                    tenant_id: tenant.id,
-                    utility_entry_id: utilityEntryId,
-                    allocated_amount: parseFloat(allocatedAmount.toFixed(2))
-                });
             }
 
         } else {
