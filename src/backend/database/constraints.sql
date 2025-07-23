@@ -34,16 +34,16 @@ END;
 -- Tenants table constraints
 CREATE TRIGGER IF NOT EXISTS validate_tenant_rent_amount
     BEFORE INSERT ON tenants
-    WHEN NEW.rent_amount <= 0
+    WHEN NEW.rent_amount < 0
 BEGIN
-    SELECT RAISE(ABORT, 'Rent amount must be positive');
+    SELECT RAISE(ABORT, 'Rent amount cannot be negative');
 END;
 
 CREATE TRIGGER IF NOT EXISTS validate_tenant_rent_amount_update
     BEFORE UPDATE ON tenants
-    WHEN NEW.rent_amount <= 0
+    WHEN NEW.rent_amount < 0
 BEGIN
-    SELECT RAISE(ABORT, 'Rent amount must be positive');
+    SELECT RAISE(ABORT, 'Rent amount cannot be negative');
 END;
 
 CREATE TRIGGER IF NOT EXISTS validate_tenant_room_area

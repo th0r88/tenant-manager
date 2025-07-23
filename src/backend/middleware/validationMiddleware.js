@@ -91,7 +91,7 @@ export class ValidationMiddleware {
                 rent_amount: {
                     required: true,
                     type: 'currency',
-                    min: 1,
+                    min: 0,
                     max: 50000
                 },
                 lease_duration: {

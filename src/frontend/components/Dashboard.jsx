@@ -33,7 +33,7 @@ export default function Dashboard() {
                 dashboardApi.getOverview(),
                 dashboardApi.getPropertiesBreakdown(),
                 dashboardApi.getRecentActivity(6),
-                dashboardApi.getRevenueTrends(6),
+                dashboardApi.getRevenueTrends(12),
                 dashboardApi.getUtilityBreakdown(3),
                 dashboardApi.getCapacityMetrics()
             ]);
@@ -157,19 +157,23 @@ export default function Dashboard() {
                     <div className="card bg-base-100 shadow-xl">
                         <div className="card-body">
                             <h2 className="card-title text-xl mb-4">{t('dashboard.capacityOverview')}</h2>
-                            <div className="space-y-3">
-                                <div className="stat" style={{ borderRight: 'none' }}>
-                                    <div className="stat-title text-sm">{t('dashboard.totalCapacity')}</div>
-                                    <div className="stat-value text-2xl text-primary">{capacityMetrics.totalCapacity || t('dashboard.unlimited')}</div>
-                                </div>
-                                <div className="stat" style={{ borderRight: 'none' }}>
-                                    <div className="stat-title text-sm">{t('dashboard.currentOccupancy')}</div>
-                                    <div className="stat-value text-2xl text-secondary">{capacityMetrics.totalOccupied || 0}</div>
-                                </div>
-                                <div className="stat">
-                                    <div className="stat-title text-sm">{t('dashboard.availableSpaces')}</div>
-                                    <div className="stat-value text-2xl text-success">{capacityMetrics.availableSpaces || t('dashboard.unlimited')}</div>
-                                </div>
+                            <div className="overflow-x-auto">
+                                <table className="table w-full">
+                                    <tbody>
+                                        <tr>
+                                            <td className="text-sm font-medium pl-0">{t('dashboard.totalCapacity')}</td>
+                                            <td className="text-2xl text-primary font-bold text-right pr-0">{capacityMetrics.totalCapacity || t('dashboard.unlimited')}</td>
+                                        </tr>
+                                        <tr>
+                                            <td className="text-sm font-medium pl-0">{t('dashboard.currentOccupancy')}</td>
+                                            <td className="text-2xl text-secondary font-bold text-right pr-0">{capacityMetrics.totalOccupied || 0}</td>
+                                        </tr>
+                                        <tr>
+                                            <td className="text-sm font-medium pl-0">{t('dashboard.availableSpaces')}</td>
+                                            <td className="text-2xl text-success font-bold text-right pr-0">{capacityMetrics.availableSpaces || t('dashboard.unlimited')}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>

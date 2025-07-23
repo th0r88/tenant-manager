@@ -260,7 +260,7 @@ function AppContent() {
     return (
         <div className="min-h-screen bg-base-200">
                 <div className="navbar bg-base-100 shadow-lg">
-                    <div className="container mx-auto flex justify-between items-center w-full max-w-5xl" style={{paddingLeft: '1rem', paddingRight: '0.5rem'}}>
+                    <div className="container mx-auto flex justify-between items-center w-full max-w-5xl" style={{paddingLeft: '1rem', paddingRight: '1rem'}}>
                         <div className="navbar-start" style={{width: '75%'}}>
                             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold pr-4">{t('common.appTitle', 'Tenant Manager')}</h1>
                         </div>
@@ -312,16 +312,18 @@ function AppContent() {
                                                             localStorage.setItem('selectedPropertyId', property.id.toString());
                                                             setIsPropertyDropdownOpen(false);
                                                         }}
-                                                        className={`flex flex-col items-start w-full px-4 py-3 text-sm text-left hover:bg-base-200 ${
-                                                            selectedProperty?.id === property.id
+                                                        className={`flex items-center w-full px-4 py-3 text-sm text-left hover:bg-base-200 ${
+                                                            selectedProperty && selectedProperty.id === property.id
                                                                 ? 'bg-primary/10 text-primary'
                                                                 : 'text-base-content'
                                                         }`}
                                                     >
-                                                        <div className="font-semibold">{property.name}</div>
-                                                        <div className="text-xs text-base-content/70 mt-1">{property.address}</div>
-                                                        {selectedProperty?.id === property.id && (
-                                                            <svg className="w-4 h-4 ml-auto text-primary absolute right-2 top-1/2 transform -translate-y-1/2" fill="currentColor" viewBox="0 0 20 20">
+                                                        <div className="flex-1">
+                                                            <div className="font-semibold">{property.name}</div>
+                                                            <div className="text-xs text-base-content/70 mt-1">{property.address}</div>
+                                                        </div>
+                                                        {selectedProperty && selectedProperty.id === property.id && (
+                                                            <svg className="w-4 h-4 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                                             </svg>
                                                         )}
@@ -655,7 +657,7 @@ function AppContent() {
                                                         setIsMobileMenuOpen(false);
                                                     }}
                                                     className={`w-full flex items-start p-3 text-left rounded-md transition-colors duration-200 ${
-                                                        selectedProperty?.id === property.id
+                                                        selectedProperty && selectedProperty.id === property.id
                                                             ? 'bg-primary text-primary-content'
                                                             : 'bg-base-200 hover:bg-base-300'
                                                     }`}
@@ -664,7 +666,7 @@ function AppContent() {
                                                         <div className="font-medium">{property.name}</div>
                                                         <div className="text-xs opacity-70 mt-1">{property.address}</div>
                                                     </div>
-                                                    {selectedProperty?.id === property.id && (
+                                                    {selectedProperty && selectedProperty.id === property.id && (
                                                         <svg className="w-5 h-5 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                                                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                                         </svg>
@@ -825,6 +827,31 @@ function AppContent() {
                 </ErrorBoundary>
             )}
             </div>
+            
+            {/* Footer */}
+            <footer className="bg-base-200 py-4">
+                <div className="container mx-auto px-4 text-center">
+                    <div className="text-sm text-base-content/70">
+                        <a 
+                            href="https://jf.si" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="hover:text-primary underline"
+                        >
+                            {t('footer.author')}
+                        </a>
+                        {' - '}
+                        <a 
+                            href="https://github.com/th0r88/tenant-manager" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="hover:text-primary underline"
+                        >
+                            {t('footer.github')}
+                        </a>
+                    </div>
+                </div>
+            </footer>
         </div>
     );
 }

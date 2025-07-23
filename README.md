@@ -1,108 +1,86 @@
-# Tenant Manager
+# Tenant Manager - Moje nepremičnine
 
-A modern multi-property tenant management application for property managers in Slovenia.
+Multi-property tenant management system optimized for Slovenia.
 
 ## Features
 
-- **Multi-Property Management**: Manage multiple properties with isolated data
-- **Tenant Management**: Full CRUD operations for tenant information (EMŠO, tax numbers, rent)
-- **Utility Cost Allocation**: Automatic allocation per person or per square meter
-- **Monthly Reports**: PDF generation for tenant invoices
-- **Dashboard Analytics**: Cross-property insights and revenue trends
-- **Modern UI**: Professional interface built with DaisyUI and Tailwind CSS
+- **Multi-Property Portfolio Management**: Complete isolation and cross-property analytics
+- **Advanced Utility Allocation**: Proportional per-person/per-sqm calculations with mid-month tenant handling
+- **Professional PDF Reports**: Multilingual invoices with Slovenian Unicode support
+- **Real-time Dashboard**: Revenue trends (12 months), occupancy metrics, capacity warnings
+- **Slovenian Compliance**: EMŠO validation, tax numbers, localized formats
+- **Batch Operations**: Bulk PDF export with progress tracking
+
+<img src="img/Tenant-Manager-01.png" alt="Home View" width="500"> 
+
+<img src="img/Tenant-Manager-02.png" alt="Tenants" width="300"> <img src="img/Tenant-Manager-03.png" alt="Utilities" width="300"> 
+
+<img src="img/Tenant-Manager-04.png" alt="Reports" width="300"> <img src="img/Tenant-Manager-05.png" alt="Property management" width="300">
 
 ## Tech Stack
 
-- **Backend**: Node.js, Express, SQLite
+- **Backend**: Node.js, Express, PostgreSQL/SQLite
 - **Frontend**: React, Vite, DaisyUI, Tailwind CSS
-- **PDF Generation**: PDFKit
-- **Database**: SQLite with foreign key relationships
+- **Infrastructure**: Docker, automated backups, health monitoring
 
 ## Quick Start
 
-### Prerequisites
-
-- Node.js 18+ and npm
-
-### Installation
-
-1. Clone the repository:
 ```bash
 git clone <repository-url>
 cd tennants
-```
-
-2. Install dependencies:
-```bash
 npm install
-```
-
-3. Start the development server:
-```bash
 npm run dev
 ```
 
-This will start:
-- Backend server on http://localhost:3001
-- Frontend development server on http://localhost:3000
+Access at http://localhost:3000 (frontend) and http://localhost:5999 (backend)
 
-### Available Scripts
+## Key Capabilities
 
-- `npm run dev` - Start both backend and frontend in development mode
-- `npm run server` - Start only the backend server
-- `npm run client` - Start only the frontend development server
-- `npm run build` - Build frontend for production
+### Sophisticated Calculations
+- Proportional rent for mid-month move-ins/move-outs
+- Person-days weighted utility allocation
+- Precision math to ensure 100% cost distribution
+- Cross-month utility billing logic
 
-## Project Structure
+### Production Ready
+- PostgreSQL scaling with automated migrations
+- Comprehensive error handling and circuit breakers
+- Database constraints and validation
+- Automated backup system with integrity checks
+
+### Slovenian Optimization
+- EMŠO (Unique Master Citizen Number) validation
+- Full Slovenian localization and currency formatting
+- Tax compliance and address format handling
+- Professional PDF reports with proper diacritics
+
+## Architecture
 
 ```
 src/
 ├── backend/
-│   ├── database/          # Database schema and initialization
-│   ├── routes/           # API endpoints
-│   └── services/         # Business logic (PDF generation, calculations)
+│   ├── database/          # Schema, migrations, constraints
+│   ├── routes/           # REST API endpoints
+│   ├── services/         # Business logic, PDF generation
+│   └── utils/            # Precision math, error recovery
 └── frontend/
-    ├── components/       # React components
-    └── services/         # API client
+    ├── components/       # React UI components
+    ├── services/         # API integration
+    └── locales/          # Slovenian/English translations
 ```
 
-## Database Schema
+## Environment Configuration
 
-- **Properties**: Multi-property support with isolation
-- **Tenants**: Complete tenant information with property association
-- **Utility Entries**: Monthly utility costs with allocation methods
-- **Tenant Utility Allocations**: Calculated allocations per tenant
+- **Development**: SQLite with file-based storage
+- **Production**: PostgreSQL with connection pooling
+- **Configuration**: Environment variables via `.env`
 
-## Features Overview
+## Scripts
 
-### Multi-Property Support
-- Switch between properties seamlessly
-- Data isolation per property
-- Cross-property analytics dashboard
+- `npm run dev` - Full development environment
+- `npm run server` - Backend only (port 5999)
+- `npm run build` - Production frontend build
+- `npm run backup` - Manual database backup
+- `npm run recalculate-allocations` - Fix utility calculations
 
-### Tenant Management
-- Store complete tenant information (EMŠO, tax numbers)
-- Room area and lease duration tracking
-- Edit and delete with confirmation modals
-
-### Utility Management
-- Slovenian utility types (Elektrika, Voda, Ogrevanje, etc.)
-- Two allocation methods: per person or per square meter
-- Automatic calculation and distribution
-
-### Reporting
-- Monthly summary reports
-- Individual tenant PDF invoices
-- Revenue trends and analytics
-
-## Contributing
-
-1. Create a feature branch from `develop`
-2. Make your changes
-3. Submit a pull request
-
-## License
-
-Private project for property management in Slovenia.
-
-Created with help of Claude Code!
+Built with help of Claude Code for property management in Slovenia.

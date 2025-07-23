@@ -64,7 +64,7 @@
     "currentOccupancy": "Current Occupancy",
     "availableSpaces": "Available Spaces",
     "unlimited": "Unlimited",
-    "revenueTrends": "Revenue Trends (Last 6 Months)",
+    "revenueTrends": "Revenue Trends (Last 12 Months)",
     "noRevenueData": "No revenue data available",
     "period": "Period",
     "rentRevenue": "Rent Revenue",
@@ -144,8 +144,8 @@
       }
     },
     "capacity": {
-      "atCapacity": "Property is at capacity ({current}/{max}). Cannot add new tenant.",
-      "nearCapacity": "Property is near capacity ({current}/{max}). Only {remaining} space(s) remaining.",
+      "atCapacity": "Property is at capacity ({{current}}/{{max}}). Cannot add new tenant.",
+      "nearCapacity": "Property is near capacity ({{current}}/{{max}}). Only {{remaining}} space(s) remaining.",
       "selectedProperty": "Selected Property:",
       "capacity": "Capacity:",
       "unlimited": "(Unlimited)"
@@ -344,5 +344,9 @@
     "select": "Select Language",
     "slovenian": "SI",
     "english": "EN"
+  },
+  "footer": {
+    "author": "Author JF",
+    "github": "Github"
   }
 }

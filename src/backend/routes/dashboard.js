@@ -138,7 +138,7 @@ router.get('/recent-activity', async (req, res) => {
 // Monthly revenue trends across all properties
 router.get('/revenue-trends/:months', async (req, res) => {
     try {
-        const months = parseInt(req.params.months) || 6;
+        const months = parseInt(req.params.months) || 12;
         
         // Generate month series for the last N months
         const monthSeries = [];

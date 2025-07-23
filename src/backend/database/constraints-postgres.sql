@@ -26,8 +26,8 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION validate_tenant_rent_amount()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF NEW.rent_amount <= 0 THEN
-        RAISE EXCEPTION 'Rent amount must be positive';
+    IF NEW.rent_amount < 0 THEN
+        RAISE EXCEPTION 'Rent amount cannot be negative';
     END IF;
     RETURN NEW;
 END;

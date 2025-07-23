@@ -64,7 +64,7 @@
     "currentOccupancy": "Trenutna zasedenost",
     "availableSpaces": "Razpoložljivi prostori",
     "unlimited": "Neomejeno",
-    "revenueTrends": "Trendi prihodkov (zadnjih 6 mesecev)",
+    "revenueTrends": "Trendi prihodkov (zadnjih 12 mesecev)",
     "noRevenueData": "Podatki o prihodkih niso na voljo",
     "period": "Obdobje",
     "rentRevenue": "Prihodek od najemnin",
@@ -144,8 +144,8 @@
       }
     },
     "capacity": {
-      "atCapacity": "Nepremičnina je polno zasedena ({current}/{max}). Ni možno dodati novega podnajemnika.",
-      "nearCapacity": "Nepremičnina je skoraj polno zasedena ({current}/{max}). Ostaja še {remaining} prostih mest.",
+      "atCapacity": "Nepremičnina je polno zasedena ({{current}}/{{max}}). Ni možno dodati novega podnajemnika.",
+      "nearCapacity": "Nepremičnina je skoraj polno zasedena ({{current}}/{{max}}). Ostaja še {{remaining}} prostih mest.",
       "selectedProperty": "Izbrana nepremičnina:",
       "capacity": "Kapaciteta:",
       "unlimited": "(Neomejeno)"
@@ -338,5 +338,9 @@
     "select": "Izberi jezik",
     "slovenian": "SI",
     "english": "EN"
+  },
+  "footer": {
+    "author": "Avtor JF",
+    "github": "Github"
   }
 }

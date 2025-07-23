@@ -188,7 +188,7 @@ export const dashboardApi = {
         if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
         return r.json();
     }),
-    getRevenueTrends: (months = 6) => fetch(`${API_BASE}/dashboard/revenue-trends/${months}`).then(r => {
+    getRevenueTrends: (months = 12) => fetch(`${API_BASE}/dashboard/revenue-trends/${months}`).then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
         return r.json();
     }),

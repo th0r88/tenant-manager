@@ -147,7 +147,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
             rent_amount: {
                 required: true,
                 type: 'number',
-                min: 1,
+                min: 0,
                 max: 50000,
                 errorKey: 'rent_amount'
             },
