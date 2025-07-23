@@ -17,6 +17,8 @@ Multi-property tenant management system optimized for Slovenia.
 
 <img src="img/Tenant-Manager-04.png" alt="Reports" width="300"> <img src="img/Tenant-Manager-05.png" alt="Property management" width="300">
 
+**[PDF report example](img/tenant-report-7-2025.pdf)**
+
 ## Tech Stack
 
 - **Backend**: Node.js, Express, PostgreSQL/SQLite
