@@ -22,6 +22,7 @@ function AppContent() {
     const [utilities, setUtilities] = useState([]);
     const [editing, setEditing] = useState(null);
     const [editingUtility, setEditingUtility] = useState(null);
+    const [dashboardKey, setDashboardKey] = useState(0);
     const [activeTab, setActiveTab] = useState('dashboard');
 
     // Helper function to change tab with hash and localStorage persistence
@@ -149,6 +150,11 @@ function AppContent() {
         }
     };
 
+    const handlePropertyChange = async () => {
+        await loadProperties();
+        setDashboardKey(prevKey => prevKey + 1); // Force dashboard refresh
+    };
+
     const loadTenants = async () => {
         if (!selectedProperty) return;
         try {
@@ -190,6 +196,7 @@ function AppContent() {
             }
             setEditing(null);
             loadTenants();
+            setDashboardKey(prevKey => prevKey + 1); // Refresh dashboard when tenants change
         } catch (err) {
             setError(t('forms.errorSaving'));
         }
@@ -252,6 +259,7 @@ function AppContent() {
             await tenantApi.delete(id);
             setSuccess(t('forms.successDeleted'));
             loadTenants();
+            setDashboardKey(prevKey => prevKey + 1); // Refresh dashboard when tenants change
         } catch (err) {
             setError(t('forms.errorDeleting'));
         }
@@ -681,7 +689,7 @@ function AppContent() {
                     </>
                 )}
             
-            {activeTab === 'dashboard' && <Dashboard />}
+            {activeTab === 'dashboard' && <Dashboard key={dashboardKey} />}
             
             {activeTab === 'tenants' && (
                 <>
@@ -820,7 +828,7 @@ function AppContent() {
                 <ErrorBoundary>
                     <PropertyManager 
                         properties={properties}
-                        onPropertyChange={loadProperties}
+                        onPropertyChange={handlePropertyChange}
                         onError={setError}
                         onSuccess={setSuccess}
                     />

@@ -15,7 +15,8 @@ router.get('/overview', async (req, res) => {
             totalRent: 'SELECT SUM(rent_amount) as total FROM tenants',
             effectiveOccupancy: `SELECT 
                 t.id, t.move_in_date, t.move_out_date, t.property_id, t.number_of_people
-                FROM tenants t`,
+                FROM tenants t
+                WHERE t.move_out_date IS NULL OR t.move_out_date >= CURRENT_DATE`,
             capacityData: `SELECT 
                 p.id, p.number_of_tenants as property_capacity
                 FROM properties p`
@@ -53,8 +54,8 @@ router.get('/overview', async (req, res) => {
             .filter(p => p.property_capacity !== null)
             .reduce((sum, p) => sum + parseInt(p.property_capacity), 0);
         
-        // Calculate actual people living across all properties for current month
-        let actualPeopleLiving = 0;
+        // Calculate actual tenants living across all properties for current month
+        let actualTenantsLiving = 0;
         effectiveOccupancyResult.rows.forEach(tenant => {
             const occupiedDays = calculateOccupiedDays(
                 tenant.move_in_date, 
@@ -63,14 +64,14 @@ router.get('/overview', async (req, res) => {
                 currentMonth
             );
             
-            // If tenant is living there for any part of the current month, count their people
+            // If tenant is living there for any part of the current month, count as 1 tenant space occupied
             if (occupiedDays > 0) {
-                actualPeopleLiving += parseInt(tenant.number_of_people) || 1;
+                actualTenantsLiving += 1;
             }
         });
         
-        // True effective occupancy = (actual people living) / (total capacity)
-        results.effectiveOccupancy = totalCapacity > 0 ? actualPeopleLiving / totalCapacity : 0;
+        // True effective occupancy = (actual tenants living) / (total capacity)
+        results.effectiveOccupancy = totalCapacity > 0 ? actualTenantsLiving / totalCapacity : 0;
         results.avgOccupancy = results.effectiveOccupancy;
 
         res.json(results);
