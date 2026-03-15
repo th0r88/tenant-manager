@@ -1,6 +1,7 @@
 import express from 'express';
 import db from '../database/db.js';
 import { trackTenantUpdate, trackOccupancyChange } from '../services/occupancyTrackingService.js';
+import { calculateAllocations } from '../services/calculationService.js';
 import { validateTenant } from '../middleware/validationMiddleware.js';
 import { safeDbOperation } from '../middleware/errorHandler.js';
 import errorRecovery from '../utils/errorRecovery.js';
@@ -115,12 +116,30 @@ router.put('/:id', validateTenant, async (req, res) => {
                 ...req.body,
                 property_id: previousData.property_id
             };
-            
+
             await trackTenantUpdate(parseInt(req.params.id), previousData, newData, 'Tenant data updated');
         } catch (trackError) {
             console.error('Error tracking tenant update:', trackError);
         }
-        
+
+        // Recalculate utility allocations if allocation-affecting fields changed
+        const allocationFields = ['room_area', 'number_of_people', 'move_in_date', 'move_out_date'];
+        const needsRecalc = allocationFields.some(f => String(previousData[f] ?? '') !== String(req.body[f] ?? ''));
+        if (needsRecalc) {
+            try {
+                const utilitiesResult = await db.query(
+                    'SELECT id FROM utility_entries WHERE property_id = $1',
+                    [previousData.property_id]
+                );
+                for (const ue of utilitiesResult.rows) {
+                    await calculateAllocations(ue.id);
+                }
+                console.log(`Recalculated ${utilitiesResult.rows.length} utility allocations after tenant update`);
+            } catch (recalcError) {
+                console.error('Error recalculating allocations:', recalcError);
+            }
+        }
+
         res.json({ id: req.params.id, ...req.body });
     } catch (err) {
         res.status(400).json({ error: `Database error: ${err.message}` });
