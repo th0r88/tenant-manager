@@ -15,7 +15,8 @@ router.get('/tenant/:id', async (req, res) => {
         const history = await getTenantOccupancyHistory(tenantId);
         res.json(history);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Occupancy tracking error:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -33,7 +34,8 @@ router.get('/property/:id', async (req, res) => {
         const history = await getPropertyOccupancyHistory(propertyId, filters);
         res.json(history);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Occupancy tracking error:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -51,7 +53,8 @@ router.get('/statistics/:propertyId', async (req, res) => {
         const statistics = await getMonthlyOccupancyStats(propertyId, 12);
         res.json(statistics);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Occupancy tracking error:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -68,7 +71,8 @@ router.get('/report', async (req, res) => {
         const report = await getOccupancySnapshot(filters.propertyId || 1);
         res.json(report);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Occupancy tracking error:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

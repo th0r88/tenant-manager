@@ -19,3 +19,17 @@ ALTER TABLE utility_entries ADD COLUMN property_id INTEGER DEFAULT 1;
 -- Update existing data to use default property
 UPDATE tenants SET property_id = 1 WHERE property_id IS NULL;
 UPDATE utility_entries SET property_id = 1 WHERE property_id IS NULL;
+
+-- Add payment_adjustments table for tracking overpayments/underpayments
+CREATE TABLE IF NOT EXISTS payment_adjustments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tenant_id INTEGER NOT NULL,
+    month INTEGER NOT NULL,
+    year INTEGER NOT NULL,
+    amount_paid REAL NOT NULL,
+    note TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
+    UNIQUE(tenant_id, month, year)
+);

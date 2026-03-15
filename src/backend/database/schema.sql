@@ -67,6 +67,19 @@ CREATE TABLE IF NOT EXISTS billing_periods (
     UNIQUE(property_id, month, year)
 );
 
+CREATE TABLE IF NOT EXISTS payment_adjustments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tenant_id INTEGER NOT NULL,
+    month INTEGER NOT NULL,
+    year INTEGER NOT NULL,
+    amount_paid REAL NOT NULL,
+    note TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
+    UNIQUE(tenant_id, month, year)
+);
+
 -- Efficient date-range indexes for occupancy queries
 CREATE INDEX IF NOT EXISTS idx_tenants_move_in_date ON tenants (move_in_date);
 CREATE INDEX IF NOT EXISTS idx_tenants_move_out_date ON tenants (move_out_date);

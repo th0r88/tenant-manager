@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export async function generateTenantReport(tenant, month, year, utilities, options = {}) {
-    const { streaming = false, progressCallback = null, language = 'sl', utilitiesFromPreviousMonth = false, utilitiesProrated = false, prevMonth = null, prevYear = null } = options;
+    const { streaming = false, progressCallback = null, language = 'sl', utilitiesFromPreviousMonth = false, utilitiesProrated = false, prevMonth = null, prevYear = null, adjustment = null } = options;
     const lang = normalizeLanguage(language);
     
     return new Promise(async (resolve, reject) => {
@@ -82,7 +82,8 @@ export async function generateTenantReport(tenant, month, year, utilities, optio
                 utilitiesFromPreviousMonth,
                 utilitiesProrated,
                 prevMonth,
-                prevYear
+                prevYear,
+                adjustment
             });
             
             
@@ -134,7 +135,7 @@ function drawHeader(doc, tenant, month, year, language = 'sl') {
 function drawBillingSection(doc, startY, rentCalculation, utilities, month, language = 'sl', tenant, options = {}) {
     const { pageMargin, section } = PDF_STYLES.spacing;
     const { subheading } = PDF_STYLES.fontSize;
-    const { utilitiesFromPreviousMonth = false, utilitiesProrated = false, prevMonth = null, prevYear = null } = options;
+    const { utilitiesFromPreviousMonth = false, utilitiesProrated = false, prevMonth = null, prevYear = null, adjustment = null } = options;
     
     let currentY = startY;
     
@@ -189,9 +190,9 @@ function drawBillingSection(doc, startY, rentCalculation, utilities, month, lang
         });
     }
     
-    // Simple total amount
-    currentY = drawSimpleTotal(doc, currentY, rentCalculation, utilities, language);
-    
+    // Simple total amount (with optional adjustment)
+    currentY = drawSimpleTotal(doc, currentY, rentCalculation, utilities, language, adjustment);
+
     return currentY;
 }
 
@@ -294,35 +295,105 @@ function drawUtilitiesTable(doc, startY, utilities, language = 'sl') {
 }
 
 // Helper function to draw highlighted summary section
-function drawSimpleTotal(doc, startY, rentCalculation, utilities, language = 'sl') {
+function drawSimpleTotal(doc, startY, rentCalculation, utilities, language = 'sl', adjustment = null) {
     const { pageMargin, section } = PDF_STYLES.spacing;
-    
+    const tableWidth = 320;
+
     let currentY = startY + section;
-    
+
     // Calculate total
     const rentAmount = rentCalculation.isFullMonth ? rentCalculation.monthlyRent : rentCalculation.proRatedAmount;
     const utilitiesTotal = utilities.reduce((sum, utility) => sum + (parseFloat(utility.allocated_amount) || 0), 0);
     const grandTotal = parseFloat(rentAmount) + utilitiesTotal;
-    
-    // Simple total amount line
+
+    if (adjustment && adjustment.amount !== 0) {
+        // Render subtotal line
+        PDF_UTILS.addStyledText(doc, `${t(language, 'pdf.subtotal')}:`, pageMargin, currentY, {
+            fontSize: PDF_STYLES.fontSize.bodyLarge,
+            color: PDF_STYLES.colors.text,
+            font: PDF_STYLES.fonts.secondary
+        });
+
+        const subtotalText = formatCurrency(grandTotal, language);
+        const subtotalWidth = doc.widthOfString(subtotalText);
+        PDF_UTILS.addStyledText(doc, subtotalText, pageMargin + tableWidth - subtotalWidth, currentY, {
+            fontSize: PDF_STYLES.fontSize.bodyLarge,
+            color: PDF_STYLES.colors.text,
+            font: PDF_STYLES.fonts.secondary
+        });
+
+        currentY += 20;
+
+        // Render adjustment line
+        const isOverpayment = adjustment.amount > 0;
+        const adjLabel = isOverpayment
+            ? t(language, 'pdf.previousOverpayment')
+            : t(language, 'pdf.previousUnderpayment');
+        const adjMonthName = getMonthName(adjustment.month - 1, language);
+        const adjText = `${adjLabel} (${adjMonthName} ${adjustment.year}):`;
+        const adjSign = isOverpayment ? '-' : '+';
+        const adjValueText = `${adjSign}${formatCurrency(Math.abs(adjustment.amount), language)}`;
+
+        PDF_UTILS.addStyledText(doc, adjText, pageMargin, currentY, {
+            fontSize: PDF_STYLES.fontSize.bodyLarge,
+            color: PDF_STYLES.colors.text,
+            font: PDF_STYLES.fonts.primary
+        });
+
+        const adjValueWidth = doc.widthOfString(adjValueText);
+        PDF_UTILS.addStyledText(doc, adjValueText, pageMargin + tableWidth - adjValueWidth, currentY, {
+            fontSize: PDF_STYLES.fontSize.bodyLarge,
+            color: PDF_STYLES.colors.text,
+            font: PDF_STYLES.fonts.primary
+        });
+
+        currentY += 15;
+
+        // Separator line
+        doc.moveTo(pageMargin, currentY)
+           .lineTo(pageMargin + tableWidth, currentY)
+           .lineWidth(1)
+           .strokeColor(PDF_STYLES.colors.primaryDark)
+           .stroke();
+
+        currentY += 10;
+
+        // Adjusted total
+        const adjustedTotal = grandTotal - adjustment.amount; // subtract: overpayment reduces, underpayment increases
+        PDF_UTILS.addStyledText(doc, `${t(language, 'pdf.adjustedTotalDue')}:`, pageMargin, currentY, {
+            fontSize: PDF_STYLES.fontSize.heading,
+            color: PDF_STYLES.colors.primaryDark,
+            font: PDF_STYLES.fonts.secondary
+        });
+
+        const adjustedTotalText = formatCurrency(adjustedTotal, language);
+        const adjustedTotalWidth = doc.widthOfString(adjustedTotalText);
+        PDF_UTILS.addStyledText(doc, adjustedTotalText, pageMargin + tableWidth - adjustedTotalWidth, currentY, {
+            fontSize: PDF_STYLES.fontSize.heading,
+            color: PDF_STYLES.colors.primary,
+            font: PDF_STYLES.fonts.secondary
+        });
+
+        return currentY + 30;
+    }
+
+    // No adjustment — render single total line as before
     PDF_UTILS.addStyledText(doc, `${t(language, 'pdf.totalAmountDue')}:`, pageMargin, currentY, {
         fontSize: PDF_STYLES.fontSize.heading,
         color: PDF_STYLES.colors.primaryDark,
         font: PDF_STYLES.fonts.secondary
     });
-    
-    // Calculate table width (140 + 90 + 90 = 320) and right-align the total
-    const tableWidth = 320;
+
     const totalAmountText = formatCurrency(grandTotal, language);
     const totalAmountWidth = doc.widthOfString(totalAmountText);
     const totalAmountX = pageMargin + tableWidth - totalAmountWidth;
-    
+
     PDF_UTILS.addStyledText(doc, totalAmountText, totalAmountX, currentY, {
         fontSize: PDF_STYLES.fontSize.heading,
         color: PDF_STYLES.colors.primary,
         font: PDF_STYLES.fonts.secondary
     });
-    
+
     return currentY + 30;
 }
 

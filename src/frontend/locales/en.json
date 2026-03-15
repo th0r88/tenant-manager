@@ -318,7 +318,13 @@
     "regenerationComplete": "Regeneration complete",
     "regenerationFailed": "Regeneration failed",
     "regenerationError": "Regeneration error",
-    "reportsRegenerated": "reports regenerated"
+    "reportsRegenerated": "reports regenerated",
+    "paidPrevMonth": "Paid (prev. month)",
+    "adjustment": "Adjustment",
+    "overpayment": "Overpayment",
+    "underpayment": "Underpayment",
+    "exactPayment": "Exact payment",
+    "adjustmentSaved": "Adjustment saved"
   },
   "forms": {
     "required": "This field is required",

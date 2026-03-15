@@ -11,7 +11,8 @@ router.get('/', async (req, res) => {
         const result = await db.query('SELECT * FROM utility_entries WHERE property_id = $1 ORDER BY year DESC, month DESC', [propertyId]);
         res.json(result.rows);
     } catch (err) {
-        res.status(500).json({ error: `Database error: ${err.message}` });
+        console.error('Error fetching utilities:', err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -30,7 +31,8 @@ router.post('/', validateUtility, async (req, res) => {
             await calculateAllocations(newId);
             res.json({ id: newId, ...req.body });
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            console.error('Error calculating allocations for new utility:', error);
+            res.status(500).json({ error: 'Internal server error' });
         }
     } catch (err) {
         res.status(400).json({ error: `Database error: ${err.message}` });
@@ -54,7 +56,8 @@ router.put('/:id', async (req, res) => {
             await calculateAllocations(req.params.id);
             res.json({ id: req.params.id, ...req.body });
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            console.error('Error recalculating allocations for utility:', error);
+            res.status(500).json({ error: 'Internal server error' });
         }
     } catch (err) {
         res.status(400).json({ error: `Database error: ${err.message}` });
@@ -71,7 +74,8 @@ router.delete('/:id', async (req, res) => {
         
         res.json({ deleted: result.rowCount });
     } catch (err) {
-        res.status(500).json({ error: `Database error: ${err.message}` });
+        console.error('Error deleting utility:', err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -87,7 +91,8 @@ router.get('/:month/:year', async (req, res) => {
         );
         res.json(result.rows);
     } catch (err) {
-        res.status(500).json({ error: `Database error: ${err.message}` });
+        console.error('Error fetching utilities by month/year:', err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -138,10 +143,7 @@ router.post('/recalculate-all', async (req, res) => {
         
     } catch (error) {
         console.error('Bulk recalculation error:', error);
-        res.status(500).json({ 
-            error: 'Bulk recalculation failed', 
-            details: error.message 
-        });
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

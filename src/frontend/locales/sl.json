@@ -312,7 +312,13 @@
     "regenerationComplete": "Generiranje dokončano",
     "regenerationFailed": "Generiranje neuspešno",
     "regenerationError": "Napaka pri generiranju",
-    "reportsRegenerated": "poročil ponovno ustvarjenih"
+    "reportsRegenerated": "poročil ponovno ustvarjenih",
+    "paidPrevMonth": "Plačano (prejšnji mesec)",
+    "adjustment": "Prilagoditev",
+    "overpayment": "Preplačilo",
+    "underpayment": "Doplačilo",
+    "exactPayment": "Točno plačilo",
+    "adjustmentSaved": "Prilagoditev shranjena"
   },
   "forms": {
     "required": "To polje je obvezno",

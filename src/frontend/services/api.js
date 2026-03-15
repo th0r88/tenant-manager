@@ -89,7 +89,10 @@ export const reportApi = {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `tenant-report-${month}-${year}.pdf`;
+        // Extract filename from Content-Disposition header, fallback to generic
+        const disposition = response.headers.get('Content-Disposition');
+        const match = disposition && disposition.match(/filename="(.+?)"/);
+        link.download = match ? match[1] : `tenant-report-${month}-${year}.pdf`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -173,6 +176,27 @@ export const reportApi = {
             };
         }
     }
+};
+
+export const adjustmentApi = {
+    getByMonth: (month, year, propertyId) => fetch(`${API_BASE}/adjustments?month=${month}&year=${year}&property_id=${propertyId}`).then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+        return r.json();
+    }),
+    upsert: (data) => fetch(`${API_BASE}/adjustments`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify(data)
+    }).then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+        return r.json();
+    }),
+    delete: (id) => fetch(`${API_BASE}/adjustments/${id}`, {
+        method: 'DELETE'
+    }).then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+        return r.json();
+    })
 };
 
 export const dashboardApi = {

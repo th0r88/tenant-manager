@@ -1,11 +1,14 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { initializeDatabase } from './database/db.js';
 import backupService from './services/backupService.js';
 import { errorHandler, validateRequest } from './middleware/errorHandler.js';
+import { authMiddleware } from './middleware/auth.js';
+import { generalLimiter, writeMethodLimiter, isRateLimitEnabled } from './middleware/rateLimiter.js';
 import { responseMiddleware, errorResponseMiddleware } from './utils/responseFormatter.js';
 import config from './config/environment.js';
 import logger from './utils/logger.js';
@@ -19,6 +22,7 @@ import propertiesRouter from './routes/properties.js';
 import dashboardRouter from './routes/dashboard.js';
 import billingPeriodsRouter from './routes/billingPeriods.js';
 import occupancyTrackingRouter from './routes/occupancyTracking.js';
+import adjustmentsRouter from './routes/adjustments.js';
 
 const app = express();
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -31,7 +35,8 @@ const serverConfig = config.getServerConfig();
 const PORT = serverConfig.port;
 
 app.use(cors(serverConfig.cors));
-app.use(express.json({ 
+app.use(helmet());
+app.use(express.json({
     limit: config.get('security.maxRequestSize'),
     type: 'application/json',
     verify: (req, res, buf) => {
@@ -51,8 +56,17 @@ app.use(logger.requestMiddleware());
 // Add request validation middleware
 app.use(validateRequest());
 
-// Enhanced health check endpoint
+// Enhanced health check endpoint (before auth - publicly accessible)
 app.get('/api/health', healthCheck.middleware());
+
+// API key authentication (after health check, before all other /api/ routes)
+app.use(authMiddleware);
+
+// Rate limiting for /api/ routes
+if (isRateLimitEnabled()) {
+    app.use('/api/', generalLimiter);
+    app.use('/api/', writeMethodLimiter);
+}
 
 // System status endpoint
 app.get('/api/status', async (req, res) => {
@@ -111,6 +125,7 @@ app.use('/api/reports', reportsRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/billing-periods', billingPeriodsRouter);
 app.use('/api/occupancy-tracking', occupancyTrackingRouter);
+app.use('/api/adjustments', adjustmentsRouter);
 
 // Serve static files from the built frontend
 const distPath = join(__dirname, '..', '..', 'dist');
@@ -195,6 +210,9 @@ async function startServer() {
             console.log(`📋 Environment: ${config.getEnvironment()}`);
             console.log(`✅ Automatic database backups: ${backupConfig.enabled ? 'enabled' : 'disabled'}`);
             console.log(`✅ Health monitoring: ${monitoringConfig.healthCheck.enabled ? 'active' : 'inactive'}`);
+            console.log(`✅ API authentication: ${process.env.API_KEY ? 'enabled' : 'disabled'}`);
+            console.log(`✅ Rate limiting: ${isRateLimitEnabled() ? 'enabled' : 'disabled'}`);
+            console.log('✅ Helmet security headers: enabled');
             console.log('✅ Error recovery systems online');
             console.log('✅ API response standardization active');
             // console.log('✅ Alert system initialized');

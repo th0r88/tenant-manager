@@ -29,7 +29,8 @@ router.get('/', async (req, res) => {
         
         res.json(propertiesWithCapacity);
     } catch (err) {
-        res.status(500).json({ error: `Database error: ${err.message}` });
+        console.error('Error in properties route:', err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -85,7 +86,8 @@ router.delete('/:id', async (req, res) => {
         const result = await db.query('DELETE FROM properties WHERE id = $1', [req.params.id]);
         res.json({ deleted: result.rowCount });
     } catch (err) {
-        res.status(500).json({ error: `Database error: ${err.message}` });
+        console.error('Error in properties route:', err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

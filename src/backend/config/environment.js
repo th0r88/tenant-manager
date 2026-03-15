@@ -26,7 +26,27 @@ export class EnvironmentConfig {
                 port: 5999,
                 host: '0.0.0.0',
                 cors: {
-                    origin: true,
+                    origin: (() => {
+                        const corsOrigins = process.env.CORS_ORIGINS;
+                        if (corsOrigins) {
+                            const allowed = corsOrigins.split(',').map(o => o.trim());
+                            return function (origin, callback) {
+                                if (!origin || allowed.includes(origin)) {
+                                    callback(null, true);
+                                } else {
+                                    callback(new Error('Not allowed by CORS'));
+                                }
+                            };
+                        }
+                        const defaultOrigins = ['http://localhost:3000', 'http://localhost:5999'];
+                        return function (origin, callback) {
+                            if (!origin || defaultOrigins.includes(origin)) {
+                                callback(null, true);
+                            } else {
+                                callback(new Error('Not allowed by CORS'));
+                            }
+                        };
+                    })(),
                     credentials: true
                 }
             },
@@ -36,8 +56,8 @@ export class EnvironmentConfig {
                 host: 'localhost',
                 port: 5432,
                 name: 'tenant_manager',
-                user: 'tenant_user',
-                password: 'tenant_pass',
+                user: '',     // Required: set via DATABASE_USER env var
+                password: '', // Required: set via DATABASE_PASSWORD env var
                 timeout: 30000,
                 busyTimeout: 30000,
                 retries: 3,
@@ -89,9 +109,9 @@ export class EnvironmentConfig {
                 requestTimeout: 30000,
                 maxRequestSize: '10MB',
                 rateLimit: {
-                    enabled: false, // Trusted homelab network
+                    enabled: true,
                     windowMs: 900000, // 15 minutes
-                    max: 1000
+                    max: 100
                 }
             },
             errorRecovery: {
@@ -174,6 +194,15 @@ export class EnvironmentConfig {
             envConfig.logging = { 
                 ...envConfig.logging, 
                 enableFile: true 
+            };
+        }
+
+        // Security configuration
+        if (process.env.RATE_LIMIT_ENABLED !== undefined) {
+            envConfig.security = {
+                rateLimit: {
+                    enabled: process.env.RATE_LIMIT_ENABLED !== 'false'
+                }
             };
         }
 
@@ -331,6 +360,16 @@ export class EnvironmentConfig {
         // Validate database configuration
         if (!this.config.database.path) {
             errors.push('Database path is required');
+        }
+
+        // Validate PostgreSQL credentials are provided when using postgresql
+        if (this.config.database.type === 'postgresql') {
+            if (!this.config.database.user) {
+                errors.push('DATABASE_USER is required for PostgreSQL');
+            }
+            if (!this.config.database.password) {
+                errors.push('DATABASE_PASSWORD is required for PostgreSQL');
+            }
         }
 
         // Validate backup configuration

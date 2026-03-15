@@ -77,7 +77,7 @@ router.get('/overview', async (req, res) => {
         res.json(results);
     } catch (err) {
         console.error('Dashboard overview error:', err);
-        res.status(500).json({ error: `Database error: ${err.message}` });
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -101,7 +101,8 @@ router.get('/properties-breakdown', async (req, res) => {
         );
         res.json(result.rows);
     } catch (err) {
-        res.status(500).json({ error: `Database error: ${err.message}` });
+        console.error('Dashboard error:', err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -132,7 +133,8 @@ router.get('/recent-activity', async (req, res) => {
         );
         res.json(result.rows);
     } catch (err) {
-        res.status(500).json({ error: `Database error: ${err.message}` });
+        console.error('Dashboard error:', err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -227,7 +229,8 @@ router.get('/revenue-trends/:months', async (req, res) => {
         
         res.json(result);
     } catch (err) {
-        res.status(500).json({ error: `Database error: ${err.message}` });
+        console.error('Dashboard error:', err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -249,7 +252,8 @@ router.get('/utility-breakdown/:months', async (req, res) => {
         );
         res.json(result.rows);
     } catch (err) {
-        res.status(500).json({ error: `Database error: ${err.message}` });
+        console.error('Dashboard error:', err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -313,7 +317,8 @@ router.get('/capacity-metrics', async (req, res) => {
 
         res.json(response);
     } catch (err) {
-        res.status(500).json({ error: `Database error: ${err.message}` });
+        console.error('Dashboard error:', err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

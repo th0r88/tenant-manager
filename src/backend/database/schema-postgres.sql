@@ -75,6 +75,20 @@ CREATE TABLE IF NOT EXISTS billing_periods (
     CONSTRAINT unique_billing_period UNIQUE(property_id, month, year)
 );
 
+-- Payment adjustments table
+CREATE TABLE IF NOT EXISTS payment_adjustments (
+    id BIGSERIAL PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+    month INTEGER NOT NULL,
+    year INTEGER NOT NULL,
+    amount_paid NUMERIC(10,2) NOT NULL,
+    note TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_payment_adjustments_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
+    CONSTRAINT unique_payment_adjustment UNIQUE(tenant_id, month, year)
+);
+
 -- Efficient date-range indexes for occupancy queries
 CREATE INDEX IF NOT EXISTS idx_tenants_move_in_date ON tenants (move_in_date);
 CREATE INDEX IF NOT EXISTS idx_tenants_move_out_date ON tenants (move_out_date);
@@ -103,5 +117,11 @@ $$ language 'plpgsql';
 -- Trigger to automatically update updated_at in billing_periods
 CREATE TRIGGER update_billing_periods_updated_at
     BEFORE UPDATE ON billing_periods
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Trigger to automatically update updated_at in payment_adjustments
+CREATE TRIGGER update_payment_adjustments_updated_at
+    BEFORE UPDATE ON payment_adjustments
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();

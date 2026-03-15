@@ -1,12 +1,14 @@
 services:
   postgres:
+    # TODO: Pin to a specific image digest for reproducibility, e.g.:
+    # image: postgres:16-alpine@sha256:<digest>
     image: postgres:16-alpine
     container_name: postgres-db
     restart: unless-stopped
     environment:
-      - POSTGRES_DB=tenant_manager
-      - POSTGRES_USER=tenant_user
-      - POSTGRES_PASSWORD=tenant_pass
+      - POSTGRES_DB=${POSTGRES_DB:-tenant_manager}
+      - POSTGRES_USER=${DATABASE_USER:?DATABASE_USER is required}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD:?DATABASE_PASSWORD is required}
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --locale=C
       - POSTGRES_HOST_AUTH_METHOD=md5
     volumes:
@@ -15,17 +17,16 @@ services:
       - ./src/backend/database/constraints-postgres.sql:/docker-entrypoint-initdb.d/02-constraints.sql:ro
       - ./src/backend/database/indexes-postgres.sql:/docker-entrypoint-initdb.d/03-indexes.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tenant_user -d tenant_manager"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 60s
     networks:
       - tenant-network
-    ports:
-      - "5432:5432"
+    # Port intentionally not exposed to host; app connects via internal Docker network
     command: >
-      postgres 
+      postgres
       -c shared_preload_libraries=pg_stat_statements
       -c max_connections=100
       -c shared_buffers=256MB
@@ -44,6 +45,8 @@ services:
       -c log_min_duration_statement=1000
 
   tenant-manager:
+    # TODO: Pin to a specific image digest for reproducibility, e.g.:
+    # image: jferme/tenant-manager:latest@sha256:<digest>
     image: jferme/tenant-manager:latest
     container_name: tenant-manager-homelab
     restart: unless-stopped
@@ -54,9 +57,9 @@ services:
       - DATABASE_TYPE=postgresql
       - DATABASE_HOST=postgres
       - DATABASE_PORT=5432
-      - DATABASE_NAME=tenant_manager
-      - DATABASE_USER=tenant_user
-      - DATABASE_PASSWORD=tenant_pass
+      - DATABASE_NAME=${POSTGRES_DB:-tenant_manager}
+      - DATABASE_USER=${DATABASE_USER:?DATABASE_USER is required}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:?DATABASE_PASSWORD is required}
       - DATABASE_POOL_MAX=20
       - DATABASE_POOL_MIN=5
       - DATABASE_TIMEOUT=30000

@@ -26,7 +26,8 @@ router.get('/', async (req, res) => {
         const result = await db.query('SELECT * FROM tenants WHERE property_id = $1 ORDER BY created_at DESC', [propertyId]);
         res.json(result.rows);
     } catch (err) {
-        res.status(500).json({ error: `Database error: ${err.message}` });
+        console.error('Error fetching tenants:', err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -83,7 +84,7 @@ router.post('/', validateTenant, async (req, res) => {
     }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', validateTenant, async (req, res) => {
     try {
         const { name, surname, address, emso, tax_number, rent_amount, lease_duration, room_area, number_of_people, move_in_date, move_out_date, occupancy_status } = req.body;
         
@@ -124,7 +125,8 @@ router.delete('/:id', async (req, res) => {
         const result = await db.query('DELETE FROM tenants WHERE id = $1', [req.params.id]);
         res.json({ deleted: result.rowCount });
     } catch (err) {
-        res.status(500).json({ error: `Database error: ${err.message}` });
+        console.error('Error deleting tenant:', err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

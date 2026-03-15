@@ -22,7 +22,11 @@ export const translations = {
       total: 'Skupaj',
       generated: 'Ustvarjeno',
       propertyManagementSystem: 'Sistem upravljanja nepremičnin',
-      confidentialDocument: 'Zaupni dokument'
+      confidentialDocument: 'Zaupni dokument',
+      subtotal: 'Vmesni seštevek',
+      previousOverpayment: 'Prejšnje preplačilo',
+      previousUnderpayment: 'Prejšnje doplačilo',
+      adjustedTotalDue: 'ZA PLAČILO'
     },
     // Months
     months: {
@@ -65,7 +69,11 @@ export const translations = {
       utilityType: 'Utility Type',
       generated: 'Generated',
       propertyManagementSystem: 'Property Management System',
-      confidentialDocument: 'Confidential Document'
+      confidentialDocument: 'Confidential Document',
+      subtotal: 'Subtotal',
+      previousOverpayment: 'Previous overpayment',
+      previousUnderpayment: 'Previous underpayment',
+      adjustedTotalDue: 'TOTAL DUE'
     },
     // Months
     months: {

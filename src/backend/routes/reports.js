@@ -2,6 +2,7 @@ import express from 'express';
 import db from '../database/db.js';
 import { generateTenantReport } from '../services/pdfService.js';
 import { calculateProportionalRent } from '../services/proportionalCalculationService.js';
+import precisionMath from '../utils/precisionMath.js';
 import archiver from 'archiver';
 import path from 'path';
 import { promisify } from 'util';
@@ -21,6 +22,45 @@ function calculateProportionalUtilities(tenant, utilities, prevYear, prevMonth) 
         utilities_prorated: false, // Proration was already applied during initial calculation
         utilities_original: utilities || []
     };
+}
+
+// Helper: compute adjustment for a tenant's previous month payment
+// Invoice for month M = rent(M) + utilities(M-1)
+// So invoice for prevMonth = rent(prevMonth) + utilities(prevPrevMonth)
+async function computeAdjustment(tenantId, tenant, prevMonth, prevYear) {
+    const adjResult = await db.query(
+        'SELECT amount_paid FROM payment_adjustments WHERE tenant_id = $1 AND month = $2 AND year = $3',
+        [tenantId, prevMonth, prevYear]
+    );
+    if (adjResult.rows.length === 0) return null;
+
+    // Compute rent for prevMonth
+    const prevRentCalc = calculateProportionalRent(tenant.rent_amount, tenant.move_in_date, tenant.move_out_date, prevYear, prevMonth);
+    const prevRent = prevRentCalc.isFullMonth ? prevRentCalc.monthlyRent : prevRentCalc.proRatedAmount;
+
+    // The invoice for prevMonth included utilities from prevPrevMonth
+    let prevPrevMonth = prevMonth - 1;
+    let prevPrevYear = prevYear;
+    if (prevPrevMonth === 0) {
+        prevPrevMonth = 12;
+        prevPrevYear = prevYear - 1;
+    }
+
+    const prevPrevUtilResult = await db.query(
+        `SELECT SUM(tua.allocated_amount) as total
+         FROM tenant_utility_allocations tua
+         JOIN utility_entries ue ON tua.utility_entry_id = ue.id
+         WHERE tua.tenant_id = $1 AND ue.month = $2 AND ue.year = $3`,
+        [tenantId, prevPrevMonth, prevPrevYear]
+    );
+    const prevPrevUtilities = parseFloat(prevPrevUtilResult.rows[0]?.total) || 0;
+
+    const prevTotalDue = precisionMath.toNumber(precisionMath.add(prevRent, prevPrevUtilities));
+    const amountPaid = parseFloat(adjResult.rows[0].amount_paid);
+    const adjustmentAmount = precisionMath.toNumber(precisionMath.subtract(amountPaid, prevTotalDue));
+
+    if (Math.abs(adjustmentAmount) < 0.005) return null;
+    return { amount: adjustmentAmount, month: prevMonth, year: prevYear };
 }
 
 const router = express.Router();
@@ -85,7 +125,34 @@ router.get('/summary/:month/:year', async (req, res) => {
         utilities.forEach(util => {
             utilitiesMap[util.tenant_id] = util.utilities_total || 0;
         });
-        
+
+        // Compute prev_total_due per tenant (what was invoiced in prevMonth)
+        // Invoice for prevMonth = rent(prevMonth) + utilities(prevPrevMonth)
+        let prevPrevMonth = prevMonth - 1;
+        let prevPrevYear = prevYear;
+        if (prevPrevMonth === 0) {
+            prevPrevMonth = 12;
+            prevPrevYear = prevYear - 1;
+        }
+
+        let prevPrevUtilities = [];
+        if (tenantIds.length > 0) {
+            const pp = tenantIds.map((_, index) => `$${index + 3}`).join(', ');
+            const ppResult = await db.query(
+                `SELECT tua.tenant_id, SUM(tua.allocated_amount) as utilities_total
+                 FROM tenant_utility_allocations tua
+                 INNER JOIN utility_entries ue ON tua.utility_entry_id = ue.id
+                 WHERE ue.month = $1 AND ue.year = $2 AND tua.tenant_id IN (${pp})
+                 GROUP BY tua.tenant_id`,
+                [prevPrevMonth, prevPrevYear, ...tenantIds]
+            );
+            prevPrevUtilities = ppResult.rows;
+        }
+        const prevPrevUtilMap = {};
+        prevPrevUtilities.forEach(u => {
+            prevPrevUtilMap[u.tenant_id] = parseFloat(u.utilities_total) || 0;
+        });
+
         const result = tenants
             .filter(tenant => {
                 // Only include tenants who were actually living there during the current month
@@ -117,12 +184,21 @@ router.get('/summary/:month/:year', async (req, res) => {
                 rentCalculation.monthlyRent : 
                 rentCalculation.proRatedAmount;
             
+            // Compute previous month's total_due for adjustment calculation
+            const prevRentCalc = calculateProportionalRent(
+                tenant.rent_amount, tenant.move_in_date, tenant.move_out_date,
+                prevYear, prevMonth
+            );
+            const prevMonthRent = prevRentCalc.isFullMonth ? prevRentCalc.monthlyRent : prevRentCalc.proRatedAmount;
+            const prevMonthUtilities = prevPrevUtilMap[tenant.id] || 0;
+            const prev_total_due = parseFloat(prevMonthRent) + prevMonthUtilities;
+
             return {
                 ...tenant,
                 rent_amount: currentMonthRent,
-                utilities_total: Math.round(utilities_total * 100) / 100, // Round to 2 decimal places
+                utilities_total: Math.round(utilities_total * 100) / 100,
                 total_due: parseFloat(currentMonthRent) + parseFloat(utilities_total),
-                // Additional info for debugging
+                prev_total_due: Math.round(prev_total_due * 100) / 100,
                 is_rent_prorated: !rentCalculation.isFullMonth,
                 occupied_days_current: rentCalculation.occupiedDays,
                 total_days_current: rentCalculation.totalDaysInMonth
@@ -131,7 +207,8 @@ router.get('/summary/:month/:year', async (req, res) => {
         
         res.json(result);
     } catch (err) {
-        res.status(500).json({ error: `Database error: ${err.message}` });
+        console.error('Error fetching report summary:', err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -174,15 +251,19 @@ router.get('/:tenantId/:month/:year', async (req, res) => {
             allocated_amount: utility.allocated_amount  // Already prorated in calculationService
         }));
         
+        // Look up payment adjustment for the previous month
+        const adjustment = await computeAdjustment(tenantId, tenant, prevMonth, prevYear);
+
         // Generate PDF with current month but previous month utilities (proportionally adjusted)
-        const pdfBuffer = await generateTenantReport(tenant, month, year, modifiedUtilities, { 
+        const pdfBuffer = await generateTenantReport(tenant, month, year, modifiedUtilities, {
             language: lang,
             utilitiesFromPreviousMonth: true, // Flag to indicate utilities are from previous month
             utilitiesProrated: proportionalUtilities.utilities_prorated,
             prevMonth,
-            prevYear
+            prevYear,
+            adjustment
         });
-        
+
         const safeName = tenant.name.replace(/[^a-zA-Z0-9]/g, '');
         const safeSurname = tenant.surname.replace(/[^a-zA-Z0-9]/g, '');
         res.set({
@@ -192,7 +273,8 @@ router.get('/:tenantId/:month/:year', async (req, res) => {
         
         res.send(pdfBuffer);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error generating tenant report:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -206,6 +288,10 @@ router.post('/batch-export', async (req, res) => {
     
     if (!month || !year) {
         return res.status(400).json({ error: 'month and year are required' });
+    }
+
+    if (tenantIds.length > 50) {
+        return res.status(400).json({ error: 'Maximum 50 tenants per batch export' });
     }
 
     // Calculate previous month and year for utilities
@@ -281,23 +367,27 @@ router.post('/batch-export', async (req, res) => {
                     allocated_amount: utility.allocated_amount  // Already prorated in calculationService
                 }));
 
+                // Look up payment adjustment for the previous month
+                const adjustment = await computeAdjustment(tenantId, tenant, prevMonth, prevYear);
+
                 // Generate PDF with previous month utilities (proportionally adjusted)
-                const pdfBuffer = await generateTenantReport(tenant, month, year, modifiedUtilities, { 
+                const pdfBuffer = await generateTenantReport(tenant, month, year, modifiedUtilities, {
                     language,
                     utilitiesFromPreviousMonth: true,
                     utilitiesProrated: proportionalUtilities.utilities_prorated,
                     prevMonth,
-                    prevYear
+                    prevYear,
+                    adjustment
                 });
-                
+
                 // Create safe filename
                 const safeName = tenant.name.replace(/[^a-zA-Z0-9]/g, '');
                 const safeSurname = tenant.surname.replace(/[^a-zA-Z0-9]/g, '');
                 const filename = `${safeName}_${safeSurname}_${month}_${year}.pdf`;
-                
+
                 // Add PDF to archive
                 archive.append(pdfBuffer, { name: filename });
-                
+
                 processedCount++;
                 console.log(`Processed ${processedCount}/${totalCount}: ${tenant.name} ${tenant.surname}`);
 
@@ -322,10 +412,7 @@ router.post('/batch-export', async (req, res) => {
     } catch (error) {
         console.error('Batch export error:', error);
         if (!res.headersSent) {
-            res.status(500).json({ 
-                error: 'Batch export failed', 
-                details: error.message 
-            });
+            res.status(500).json({ error: 'Internal server error' });
         }
     }
 });
@@ -340,6 +427,10 @@ router.post('/batch-export-stream', async (req, res) => {
     
     if (!month || !year) {
         return res.status(400).json({ error: 'month and year are required' });
+    }
+
+    if (tenantIds.length > 50) {
+        return res.status(400).json({ error: 'Maximum 50 tenants per batch export' });
     }
 
     // Calculate previous month and year for utilities
@@ -431,23 +522,27 @@ router.post('/batch-export-stream', async (req, res) => {
                     allocated_amount: utility.allocated_amount  // Already prorated in calculationService
                 }));
 
+                // Look up payment adjustment for the previous month
+                const adjustment = await computeAdjustment(tenantId, tenant, prevMonth, prevYear);
+
                 // Generate PDF with previous month utilities (proportionally adjusted)
-                const pdfBuffer = await generateTenantReport(tenant, month, year, modifiedUtilities, { 
+                const pdfBuffer = await generateTenantReport(tenant, month, year, modifiedUtilities, {
                     language,
                     utilitiesFromPreviousMonth: true,
                     utilitiesProrated: proportionalUtilities.utilities_prorated,
                     prevMonth,
-                    prevYear
+                    prevYear,
+                    adjustment
                 });
-                
+
                 // Create safe filename
                 const safeName = tenant.name.replace(/[^a-zA-Z0-9]/g, '');
                 const safeSurname = tenant.surname.replace(/[^a-zA-Z0-9]/g, '');
                 const filename = `${safeName}_${safeSurname}_${month}_${year}.pdf`;
-                
+
                 // Add PDF to archive
                 archive.append(pdfBuffer, { name: filename });
-                
+
                 processedCount++;
                 sendProgress(processedCount, totalCount, `Completed ${tenant.name} ${tenant.surname}`);
 
@@ -481,10 +576,7 @@ router.post('/batch-export-stream', async (req, res) => {
     } catch (error) {
         console.error('Streaming batch export error:', error);
         if (!res.headersSent) {
-            res.status(500).json({ 
-                error: 'Streaming batch export failed', 
-                details: error.message 
-            });
+            res.status(500).json({ error: 'Internal server error' });
         }
     }
 });
@@ -494,46 +586,75 @@ router.post('/regenerate/:month/:year', async (req, res) => {
     try {
         const { month, year } = req.params;
         const { propertyId = 1, language = 'sl' } = req.body;
-        
+
+        // Calculate previous month and year for utilities
+        let prevMonth = parseInt(month) - 1;
+        let prevYear = parseInt(year);
+        if (prevMonth === 0) {
+            prevMonth = 12;
+            prevYear = parseInt(year) - 1;
+        }
+
         // Get all tenants for the property
         const tenantsResult = await db.query(
-            `SELECT id, name, surname 
-             FROM tenants 
-             WHERE property_id = $1`,
+            `SELECT t.*, p.name as property_name
+             FROM tenants t
+             JOIN properties p ON t.property_id = p.id
+             WHERE t.property_id = $1`,
             [propertyId]
         );
         const tenants = tenantsResult.rows;
-        
+
         if (tenants.length === 0) {
-            return res.json({ 
-                success: true, 
+            return res.json({
+                success: true,
                 message: 'No tenants found for regeneration',
-                regenerated: 0 
+                regenerated: 0
             });
         }
-        
+
         let regeneratedCount = 0;
         let errors = [];
-        
-        // Regenerate PDF for each tenant
+
+        // Regenerate PDF for each tenant using direct function calls
         for (const tenant of tenants) {
             try {
-                // The PDF generation happens automatically when the endpoint is called
-                // We just need to verify the tenant has valid data for the period
-                const testResponse = await fetch(`http://localhost:5999/api/reports/${tenant.id}/${month}/${year}?lang=${language}`, {
-                    method: 'HEAD'
+                // Get tenant utilities from previous month
+                const utilitiesResult = await db.query(
+                    `SELECT ue.utility_type, ue.total_amount, ue.allocation_method, tua.allocated_amount
+                     FROM tenant_utility_allocations tua
+                     JOIN utility_entries ue ON tua.utility_entry_id = ue.id
+                     WHERE tua.tenant_id = $1 AND ue.month = $2 AND ue.year = $3`,
+                    [tenant.id, prevMonth, prevYear]
+                );
+                const utilities = utilitiesResult.rows || [];
+
+                const proportionalUtilities = calculateProportionalUtilities(tenant, utilities, prevYear, prevMonth);
+
+                const modifiedUtilities = utilities.map(utility => ({
+                    ...utility,
+                    allocated_amount: utility.allocated_amount
+                }));
+
+                const adjustment = await computeAdjustment(tenant.id, tenant, prevMonth, prevYear);
+
+                // Generate PDF directly
+                await generateTenantReport(tenant, month, year, modifiedUtilities, {
+                    language,
+                    utilitiesFromPreviousMonth: true,
+                    utilitiesProrated: proportionalUtilities.utilities_prorated,
+                    prevMonth,
+                    prevYear,
+                    adjustment
                 });
-                
-                if (testResponse.ok) {
-                    regeneratedCount++;
-                } else {
-                    errors.push(`Failed to regenerate PDF for ${tenant.name} ${tenant.surname}`);
-                }
+
+                regeneratedCount++;
             } catch (error) {
-                errors.push(`Error regenerating PDF for ${tenant.name} ${tenant.surname}: ${error.message}`);
+                console.error(`Error regenerating PDF for tenant ${tenant.id}:`, error);
+                errors.push(`Failed to regenerate PDF for ${tenant.name} ${tenant.surname}`);
             }
         }
-        
+
         res.json({
             success: true,
             message: `Regeneration completed for ${month}/${year}`,
@@ -541,13 +662,10 @@ router.post('/regenerate/:month/:year', async (req, res) => {
             total: tenants.length,
             errors: errors
         });
-        
+
     } catch (error) {
         console.error('PDF regeneration error:', error);
-        res.status(500).json({ 
-            error: 'PDF regeneration failed', 
-            details: error.message 
-        });
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

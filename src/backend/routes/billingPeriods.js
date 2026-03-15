@@ -22,7 +22,8 @@ router.get('/', async (req, res) => {
         const billingPeriods = await getBillingPeriods(filters);
         res.json(billingPeriods);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error fetching billing periods:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -72,7 +73,8 @@ router.get('/:id/audit', async (req, res) => {
         const auditTrail = await getBillingAuditTrail(parseInt(req.params.id));
         res.json(auditTrail);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error fetching billing audit trail:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

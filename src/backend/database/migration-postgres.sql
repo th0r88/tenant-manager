@@ -19,15 +19,29 @@ UPDATE tenants SET property_id = 1 WHERE property_id IS NULL;
 UPDATE utility_entries SET property_id = 1 WHERE property_id IS NULL;
 
 -- Add foreign key constraints if they don't exist (PostgreSQL syntax)
-DO $$ 
+DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_tenants_property') THEN
-        ALTER TABLE tenants ADD CONSTRAINT fk_tenants_property 
+        ALTER TABLE tenants ADD CONSTRAINT fk_tenants_property
             FOREIGN KEY (property_id) REFERENCES properties (id) ON DELETE CASCADE;
     END IF;
-    
+
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_utility_entries_property') THEN
-        ALTER TABLE utility_entries ADD CONSTRAINT fk_utility_entries_property 
+        ALTER TABLE utility_entries ADD CONSTRAINT fk_utility_entries_property
             FOREIGN KEY (property_id) REFERENCES properties (id) ON DELETE CASCADE;
     END IF;
 END $$;
+
+-- Add payment_adjustments table for tracking overpayments/underpayments
+CREATE TABLE IF NOT EXISTS payment_adjustments (
+    id BIGSERIAL PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+    month INTEGER NOT NULL,
+    year INTEGER NOT NULL,
+    amount_paid NUMERIC(10,2) NOT NULL,
+    note TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_payment_adjustments_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
+    CONSTRAINT unique_payment_adjustment UNIQUE(tenant_id, month, year)
+);

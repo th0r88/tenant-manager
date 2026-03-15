@@ -175,14 +175,6 @@ function sanitizeInput(obj) {
         if (typeof obj[key] === 'string') {
             // Remove null bytes and control characters
             obj[key] = obj[key].replace(/\0/g, '').trim();
-            
-            // Basic SQL injection protection
-            if (obj[key].toLowerCase().includes('drop table') ||
-                obj[key].toLowerCase().includes('delete from') ||
-                obj[key].toLowerCase().includes('insert into') ||
-                obj[key].toLowerCase().includes('update ')) {
-                throw new Error(`Potentially harmful input detected in ${key}`);
-            }
         } else if (typeof obj[key] === 'object' && obj[key] !== null) {
             sanitizeInput(obj[key]);
         }

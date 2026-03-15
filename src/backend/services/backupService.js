@@ -14,6 +14,14 @@ const { Client } = pkg;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+const ALLOWED_TABLES = ['properties', 'tenants', 'utility_entries', 'tenant_utility_allocations', 'billing_periods', 'occupancy_tracking', 'payment_adjustments'];
+
+function validateTableName(tableName) {
+    if (!ALLOWED_TABLES.includes(tableName)) {
+        throw new Error(`Unexpected table: ${tableName}`);
+    }
+}
+
 class BackupService {
     constructor() {
         this.dbPath = 'tenant_manager.db';
@@ -116,6 +124,7 @@ class BackupService {
             
             // Add schema for each table
             for (const tableName of tables) {
+                validateTableName(tableName);
                 console.log(`📋 Backing up table: ${tableName}`);
                 
                 // Get table schema
@@ -270,6 +279,7 @@ class BackupService {
             // Add data
             sqlDump += '-- Data\n';
             for (const table of tables) {
+                validateTableName(table.name);
                 const dataResponse = await client.post('/query', {
                     sql: `SELECT * FROM ${table.name}`,
                     params: []
@@ -402,6 +412,7 @@ class BackupService {
                 
                 const tables = [];
                 for (const row of result.rows) {
+                    validateTableName(row.name);
                     const countResult = await adapter.query(`SELECT COUNT(*) as count FROM ${row.name}`);
                     tables.push({
                         name: row.name,
@@ -409,14 +420,15 @@ class BackupService {
                         row_count: parseInt(countResult.rows[0].count)
                     });
                 }
-                
+
                 return tables;
             } else {
                 // HTTP/Other database types
                 const result = await adapter.query(getQueryTemplate('systemTables', config.type));
-                
+
                 const tables = [];
                 for (const row of result.rows) {
+                    validateTableName(row.name);
                     const countResult = await adapter.query(`SELECT COUNT(*) as count FROM ${row.name}`);
                     tables.push({
                         name: row.name,
@@ -594,6 +606,7 @@ class BackupService {
                         try {
                             // Drop existing tables
                             for (const table of tables) {
+                                validateTableName(table.name);
                                 await client.post('/exec', {
                                     sql: `DROP TABLE IF EXISTS ${table.name}`
                                 });
@@ -601,6 +614,7 @@ class BackupService {
 
                             // Recreate tables and restore data
                             for (const table of tables) {
+                                validateTableName(table.name);
                                 // Get table schema
                                 db.get(getQueryTemplate('systemTablesByName', 'sqlite'), [table.name], async (err, schema) => {
                                     if (err) {
