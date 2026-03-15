@@ -186,7 +186,8 @@ function drawBillingSection(doc, startY, rentCalculation, utilities, month, lang
             utilitiesFromPreviousMonth,
             utilitiesProrated,
             prevMonth,
-            prevYear
+            prevYear,
+            roomArea: tenant.room_area
         });
     }
     
@@ -199,7 +200,7 @@ function drawBillingSection(doc, startY, rentCalculation, utilities, month, lang
 // Simple utilities table (single page optimized)
 function drawUtilitiesTableWithPaging(doc, startY, utilities, language = 'sl', options = {}) {
     const { pageMargin, section } = PDF_STYLES.spacing;
-    const { utilitiesFromPreviousMonth = false, utilitiesProrated = false, prevMonth = null, prevYear = null } = options;
+    const { utilitiesFromPreviousMonth = false, utilitiesProrated = false, prevMonth = null, prevYear = null, roomArea = null } = options;
     
     let currentY = startY;
     
@@ -231,9 +232,15 @@ function drawUtilitiesTableWithPaging(doc, startY, utilities, language = 'sl', o
     const tableData = utilities.map(utility => {
         const totalAmount = parseFloat(utility.total_amount) || 0;
         const allocatedAmount = parseFloat(utility.allocated_amount) || 0;
-        
+
+        let typeName = translateUtilityType(utility.utility_type, language);
+        // Append room area for per-sqm allocation methods
+        if (roomArea && (utility.allocation_method === 'per_sqm' || utility.allocation_method === 'per_sqm_weighted')) {
+            typeName += ` (${parseFloat(roomArea).toLocaleString(language === 'sl' ? 'sl-SI' : 'en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} m²)`;
+        }
+
         return {
-            utility_type: translateUtilityType(utility.utility_type, language),
+            utility_type: typeName,
             total_amount: formatCurrency(totalAmount, language),
             allocated_amount: formatCurrency(allocatedAmount, language)
         };
