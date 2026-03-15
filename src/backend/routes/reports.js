@@ -155,34 +155,37 @@ router.get('/summary/:month/:year', async (req, res) => {
 
         const result = tenants
             .filter(tenant => {
-                // Only include tenants who were actually living there during the current month
+                // Include tenants who were living here during the current month
                 const rentCalculation = calculateProportionalRent(
-                    tenant.rent_amount, 
-                    tenant.move_in_date, 
-                    tenant.move_out_date, 
-                    parseInt(year), 
+                    tenant.rent_amount,
+                    tenant.move_in_date,
+                    tenant.move_out_date,
+                    parseInt(year),
                     parseInt(month)
                 );
-                // Only show tenants who had at least 1 day of occupancy in the current month
-                return rentCalculation.occupiedDays > 0;
+                if (rentCalculation.occupiedDays > 0) return true;
+                // Also include tenants who moved out last month — they still have
+                // previous-month utilities that need to appear on this month's invoice
+                const hasUtilities = (utilitiesMap[tenant.id] || 0) > 0;
+                return hasUtilities;
             })
             .map(tenant => {
             // Calculate proportional rent for current month
             const rentCalculation = calculateProportionalRent(
-                tenant.rent_amount, 
-                tenant.move_in_date, 
-                tenant.move_out_date, 
-                parseInt(year), 
+                tenant.rent_amount,
+                tenant.move_in_date,
+                tenant.move_out_date,
+                parseInt(year),
                 parseInt(month)
             );
-            
+
             // Get utilities total from previous month (already prorated by calculationService)
             const utilities_total = utilitiesMap[tenant.id] || 0;
-            
-            // Calculate final amounts
-            const currentMonthRent = rentCalculation.isFullMonth ? 
-                rentCalculation.monthlyRent : 
-                rentCalculation.proRatedAmount;
+
+            // Calculate final amounts — rent is 0 if tenant has no occupied days this month
+            const currentMonthRent = rentCalculation.occupiedDays > 0
+                ? (rentCalculation.isFullMonth ? rentCalculation.monthlyRent : rentCalculation.proRatedAmount)
+                : 0;
             
             // Compute previous month's total_due for adjustment calculation
             const prevRentCalc = calculateProportionalRent(
