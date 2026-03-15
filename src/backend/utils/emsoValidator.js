@@ -1,15 +1,48 @@
 /**
- * EMŠO (Enotna Matična Številka Občana) Validator
- * Slovenian Unique Master Citizen Number validation with checksum verification
- * 
- * Format: DDMMYYY50XXXC
+ * EMŠO/JMBG Validator
+ * Validates Unique Master Citizen Numbers used across ex-Yugoslav countries.
+ * EMŠO (Slovenia), JMBG (Serbia, Croatia, Bosnia, etc.) share the same format.
+ *
+ * Format: DDMMYYYRRXXXC
  * - DD: Day (01-31)
- * - MM: Month (01-12) 
+ * - MM: Month (01-12)
  * - YYY: Year (last 3 digits, 000-999)
- * - 50: Region code (50 for Slovenia)
- * - XXX: Serial number (000-999)
+ * - RR: Region code (2 digits, see REGIONS below)
+ * - XXX: Serial number (000-499 male, 500-999 female)
  * - C: Checksum digit (0-9)
  */
+
+/**
+ * Region code ranges mapped to country names.
+ * Range 60-69 is unassigned and therefore invalid.
+ */
+const REGIONS = {
+    '10-19': 'Bosnia and Herzegovina',
+    '20-29': 'Montenegro',
+    '30-39': 'Croatia',
+    '40-49': 'North Macedonia',
+    '50-59': 'Slovenia',
+    '70-79': 'Serbia (Central Serbia)',
+    '80-89': 'Serbia (Vojvodina)',
+    '90-99': 'Kosovo',
+};
+
+/**
+ * Returns the country name for a given two-digit region code, or null if invalid.
+ * @param {string} regionCode - Two-digit region code string
+ * @returns {string|null} Country name or null
+ */
+function getRegionCountry(regionCode) {
+    const code = parseInt(regionCode, 10);
+    if (isNaN(code) || code < 10 || code > 99) return null;
+    // 60-69 is unassigned
+    if (code >= 60 && code <= 69) return null;
+    for (const [range, country] of Object.entries(REGIONS)) {
+        const [lo, hi] = range.split('-').map(Number);
+        if (code >= lo && code <= hi) return country;
+    }
+    return null;
+}
 
 export class EmsoValidator {
     constructor() {
@@ -18,8 +51,8 @@ export class EmsoValidator {
     }
 
     /**
-     * Validates EMŠO format and checksum
-     * @param {string} emso - The EMŠO number to validate
+     * Validates an EMŠO/JMBG number (format, date, region, and checksum)
+     * @param {string} emso - The EMŠO/JMBG number to validate
      * @returns {Object} Validation result with isValid flag and details
      */
     validate(emso) {
@@ -64,9 +97,10 @@ export class EmsoValidator {
             result.errors.push(...dateValidation.errors);
         }
 
-        // Validate region code
-        if (region !== '50') {
-            result.errors.push('Invalid region code (must be 50 for Slovenia)');
+        // Validate region code (all ex-Yugoslav countries, excluding unassigned 60-69)
+        const regionCountry = getRegionCountry(region);
+        if (!regionCountry) {
+            result.errors.push('Invalid region code (must be a valid ex-Yugoslav region: 10-59, 70-99)');
         }
 
         // Validate checksum
@@ -85,6 +119,7 @@ export class EmsoValidator {
                 month,
                 year: this.getFullYear(year),
                 region,
+                regionCountry: getRegionCountry(region),
                 serial,
                 checksum,
                 formatted: this.formatEmso(cleanEmso)

@@ -113,9 +113,12 @@
     "editTenantDetails": "Uredi podrobnosti podnajemnika",
     "deleteTenantTooltip": "Izbriši podnajemnika",
     "occupancyStatuses": {
-      "active": "Aktiven",
+      "active": "Vseljen",
       "pending": "V teku",
-      "moved_out": "Odseljen"
+      "moved_out": "Odseljen",
+      "active_f": "Vseljena",
+      "pending_f": "V teku",
+      "moved_out_f": "Odseljena"
     },
     "validation": {
       "moveOutAfterMoveIn": "Datum odselitve mora biti po datumu vselitve",

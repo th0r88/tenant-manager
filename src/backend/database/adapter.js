@@ -448,15 +448,29 @@ export default class DatabaseAdapter {
     }
 
     /**
+     * Convert PostgreSQL-style $1, $2 placeholders to SQLite ? placeholders
+     * and expand params array to match repeated references
+     */
+    convertQuery(sql, params) {
+        const expandedParams = [];
+        const convertedSql = sql.replace(/\$(\d+)/g, (match, num) => {
+            expandedParams.push(params[parseInt(num) - 1]);
+            return '?';
+        });
+        return { sql: convertedSql, params: expandedParams };
+    }
+
+    /**
      * Execute SQLite query using better-sqlite3 (synchronous)
      */
     async sqliteQuery(sql, params = []) {
         try {
-            const stmt = this.connection.prepare(sql);
+            const converted = this.convertQuery(sql, params);
+            const stmt = this.connection.prepare(converted.sql);
             // Determine if it's a SELECT/RETURNING or a write operation
             const sqlTrimmed = sql.trimStart().toUpperCase();
             if (sqlTrimmed.startsWith('SELECT') || sqlTrimmed.startsWith('PRAGMA') || sql.toUpperCase().includes('RETURNING')) {
-                const rows = stmt.all(...params);
+                const rows = stmt.all(...converted.params);
                 return {
                     rows: rows || [],
                     rowCount: rows?.length || 0,
@@ -464,7 +478,7 @@ export default class DatabaseAdapter {
                     lastID: null
                 };
             } else {
-                const result = stmt.run(...params);
+                const result = stmt.run(...converted.params);
                 return {
                     rows: [],
                     rowCount: result.changes,
@@ -522,7 +536,7 @@ export default class DatabaseAdapter {
      */
     async sqliteExec(sql) {
         try {
-            this.connection.exec(sql);
+            this.connection.exec(this.convertQuery(sql, []).sql);
             return true;
         } catch (err) {
             throw err;

@@ -20,12 +20,19 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
         occupancy_status: 'active'
     });
 
+    // Ensure date strings are in YYYY-MM-DD format for <input type="date">
+    const formatDateForInput = (dateStr) => {
+        if (!dateStr) return '';
+        // Handle ISO datetime strings (e.g., "2025-01-01T00:00:00.000Z")
+        return String(dateStr).split('T')[0];
+    };
+
     useEffect(() => {
         if (initialData && initialData.id) {
             setFormData({
                 ...initialData,
-                move_in_date: initialData.move_in_date || new Date().toISOString().split('T')[0],
-                move_out_date: initialData.move_out_date || '',
+                move_in_date: formatDateForInput(initialData.move_in_date) || new Date().toISOString().split('T')[0],
+                move_out_date: formatDateForInput(initialData.move_out_date),
                 number_of_people: initialData.number_of_people || 1,
                 occupancy_status: initialData.occupancy_status || 'active'
             });
@@ -98,7 +105,7 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
         if (remainder === 0) {
             checkDigit = 0;
         } else if (remainder === 1) {
-            checkDigit = 1;
+            return 'EMŠO ima neveljavno kontrolno števko';
         } else {
             checkDigit = 11 - remainder;
         }
@@ -276,6 +283,16 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
         }
 
         return errors;
+    };
+
+    // Determine gender suffix from EMŠO for gendered Slovenian status labels
+    const getGenderSuffix = () => {
+        const emso = (formData.emso || '').replace(/\D/g, '');
+        if (emso.length >= 12) {
+            const serial = parseInt(emso.substring(9, 12));
+            if (serial >= 500) return '_f';
+        }
+        return '';
     };
 
     const checkCapacity = () => {
@@ -624,9 +641,9 @@ export default function TenantForm({ onSubmit, initialData = {}, onCancel, selec
                                 className="select select-bordered w-full"
                                 required
                             >
-                                <option value="active">{t('tenants.occupancyStatuses.active')}</option>
-                                <option value="pending">{t('tenants.occupancyStatuses.pending')}</option>
-                                <option value="moved_out">{t('tenants.occupancyStatuses.moved_out')}</option>
+                                <option value="active">{t(`tenants.occupancyStatuses.active${getGenderSuffix()}`) || t('tenants.occupancyStatuses.active')}</option>
+                                <option value="pending">{t(`tenants.occupancyStatuses.pending${getGenderSuffix()}`) || t('tenants.occupancyStatuses.pending')}</option>
+                                <option value="moved_out">{t(`tenants.occupancyStatuses.moved_out${getGenderSuffix()}`) || t('tenants.occupancyStatuses.moved_out')}</option>
                             </select>
                         </div>
                     </div>

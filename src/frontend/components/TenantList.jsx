@@ -5,6 +5,12 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
     const { t, formatCurrency, formatDate } = useTranslation();
     const [deleteModal, setDeleteModal] = useState(null);
     const [viewModal, setViewModal] = useState(null);
+
+    const getGenderedStatus = (tenant) => {
+        const emso = (tenant.emso || '').replace(/\D/g, '');
+        const suffix = emso.length >= 12 && parseInt(emso.substring(9, 12)) >= 500 ? '_f' : '';
+        return t(`tenants.occupancyStatuses.${tenant.occupancy_status}${suffix}`) || t(`tenants.occupancyStatuses.${tenant.occupancy_status}`);
+    };
     return (
         <div>
             <h2 className="text-2xl font-bold mb-4">{t('tenants.title')} ({tenants.length})</h2>
@@ -42,7 +48,7 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                                     tenant.occupancy_status === 'active' ? 'badge-success' :
                                                     tenant.occupancy_status === 'pending' ? 'badge-warning' : 'badge-error'
                                                 }`}>
-                                                    {t(`tenants.occupancyStatuses.${tenant.occupancy_status}`)}
+                                                    {getGenderedStatus(tenant)}
                                                 </div>
                                                 <div className="text-xs mt-1 opacity-70">
                                                     {tenant.move_in_date ? formatDate(new Date(tenant.move_in_date)) : t('common.none')}
@@ -119,7 +125,7 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                                     tenant.occupancy_status === 'active' ? 'badge-success' :
                                                     tenant.occupancy_status === 'pending' ? 'badge-warning' : 'badge-error'
                                                 }`}>
-                                                    {t(`tenants.occupancyStatuses.${tenant.occupancy_status}`)}
+                                                    {getGenderedStatus(tenant)}
                                                 </div>
                                             </div>
                                             <div className="text-xs opacity-70">
@@ -211,7 +217,7 @@ export default function TenantList({ tenants, onEdit, onDelete }) {
                                             viewModal.occupancy_status === 'active' ? 'badge-success' :
                                             viewModal.occupancy_status === 'pending' ? 'badge-warning' : 'badge-error'
                                         }`}>
-                                            {t(`tenants.occupancyStatuses.${viewModal.occupancy_status}`)}
+                                            {getGenderedStatus(viewModal)}
                                         </div>
                                     </div>
                                     <div className="text-xs mt-1 opacity-70">

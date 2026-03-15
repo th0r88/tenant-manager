@@ -9,12 +9,18 @@ export const propertyApi = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify(property)
-    }).then(r => r.json()),
+    }).then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+        return r.json();
+    }),
     update: (id, property) => fetch(`${API_BASE}/properties/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify(property)
-    }).then(r => r.json()),
+    }).then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+        return r.json();
+    }),
     delete: (id) => fetch(`${API_BASE}/properties/${id}`, {
         method: 'DELETE'
     }).then(r => r.json())
@@ -29,12 +35,18 @@ export const tenantApi = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify(tenant)
-    }).then(r => r.json()),
+    }).then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+        return r.json();
+    }),
     update: (id, tenant) => fetch(`${API_BASE}/tenants/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify(tenant)
-    }).then(r => r.json()),
+    }).then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+        return r.json();
+    }),
     delete: (id) => fetch(`${API_BASE}/tenants/${id}`, {
         method: 'DELETE'
     }).then(r => r.json())
@@ -49,7 +61,10 @@ export const utilityApi = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify(utility)
-    }).then(r => r.json()),
+    }).then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+        return r.json();
+    }),
     update: (id, utility) => fetch(`${API_BASE}/utilities/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
