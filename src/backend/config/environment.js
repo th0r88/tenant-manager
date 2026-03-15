@@ -31,6 +31,7 @@ export class EnvironmentConfig {
                         if (corsOrigins) {
                             const allowed = corsOrigins.split(',').map(o => o.trim());
                             return function (origin, callback) {
+                                // Allow same-origin requests (no Origin header) and whitelisted origins
                                 if (!origin || allowed.includes(origin)) {
                                     callback(null, true);
                                 } else {
@@ -38,14 +39,8 @@ export class EnvironmentConfig {
                                 }
                             };
                         }
-                        const defaultOrigins = ['http://localhost:3000', 'http://localhost:5999'];
-                        return function (origin, callback) {
-                            if (!origin || defaultOrigins.includes(origin)) {
-                                callback(null, true);
-                            } else {
-                                callback(new Error('Not allowed by CORS'));
-                            }
-                        };
+                        // No CORS_ORIGINS set: allow all origins (safe when auth is enabled)
+                        return true;
                     })(),
                     credentials: true
                 }
