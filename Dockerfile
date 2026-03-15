@@ -8,8 +8,11 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Install build tools for native modules (needed for arm64 QEMU cross-compilation)
+RUN apk add --no-cache --virtual .build-deps python3 make g++
+
 # Install all dependencies (including dev dependencies for building)
-RUN npm ci
+RUN npm ci && apk del .build-deps
 
 # Copy application code
 COPY . .
@@ -33,9 +36,11 @@ RUN addgroup -g 1001 -S tenant-manager && \
 # Copy package files
 COPY package*.json ./
 
-# Install only production dependencies (better-sqlite3 uses prebuilds, no build tools needed)
-RUN npm install --omit=dev --prefer-offline --no-audit && \
-    npm cache clean --force
+# Install build tools for native modules (needed for arm64 QEMU cross-compilation)
+RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
+    npm install --omit=dev --no-audit && \
+    npm cache clean --force && \
+    apk del .build-deps
 
 # Copy application code (backend)
 COPY src/ ./src/
