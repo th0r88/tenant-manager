@@ -23,7 +23,14 @@ const getPropertyCapacity = async (propertyId) => {
 router.get('/', async (req, res) => {
     try {
         const propertyId = req.query.property_id || 1;
-        const result = await db.query('SELECT * FROM tenants WHERE property_id = $1 ORDER BY created_at DESC', [propertyId]);
+        const result = await db.query(
+            `SELECT * FROM tenants WHERE property_id = $1
+             ORDER BY
+                CASE WHEN occupancy_status = 'moved_out' THEN 1 ELSE 0 END,
+                CASE WHEN occupancy_status = 'moved_out' THEN move_out_date END DESC,
+                move_in_date ASC`,
+            [propertyId]
+        );
         res.json(result.rows);
     } catch (err) {
         console.error('Error fetching tenants:', err);

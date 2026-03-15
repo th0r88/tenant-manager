@@ -1,7 +1,7 @@
 import express from 'express';
 import db from '../database/db.js';
 import { generateTenantReport } from '../services/pdfService.js';
-import { calculateProportionalRent } from '../services/proportionalCalculationService.js';
+import { calculateProportionalRent, calculateOccupiedDays } from '../services/proportionalCalculationService.js';
 import precisionMath from '../utils/precisionMath.js';
 import archiver from 'archiver';
 import path from 'path';
@@ -164,10 +164,11 @@ router.get('/summary/:month/:year', async (req, res) => {
                     parseInt(month)
                 );
                 if (rentCalculation.occupiedDays > 0) return true;
-                // Also include tenants who moved out last month — they still have
-                // previous-month utilities that need to appear on this month's invoice
-                const hasUtilities = (utilitiesMap[tenant.id] || 0) > 0;
-                return hasUtilities;
+                // Include moved-out tenants who were present in prevMonth (final invoice)
+                const prevMonthDays = calculateOccupiedDays(
+                    tenant.move_in_date, tenant.move_out_date, prevYear, prevMonth
+                );
+                return prevMonthDays > 0 && (utilitiesMap[tenant.id] || 0) > 0;
             })
             .map(tenant => {
             // Calculate proportional rent for current month
@@ -207,7 +208,20 @@ router.get('/summary/:month/:year', async (req, res) => {
                 total_days_current: rentCalculation.totalDaysInMonth
             };
         });
-        
+
+        // Sort: active tenants first (by move_in_date asc), then moved-out tenants (by move_out_date desc)
+        result.sort((a, b) => {
+            const aActive = a.occupied_days_current > 0 ? 0 : 1;
+            const bActive = b.occupied_days_current > 0 ? 0 : 1;
+            if (aActive !== bActive) return aActive - bActive;
+            if (aActive === 0) {
+                // Both active: sort by move_in_date ascending
+                return new Date(a.move_in_date) - new Date(b.move_in_date);
+            }
+            // Both moved-out: sort by move_out_date descending
+            return new Date(b.move_out_date) - new Date(a.move_out_date);
+        });
+
         res.json(result);
     } catch (err) {
         console.error('Error fetching report summary:', err);
