@@ -32,6 +32,19 @@ BEGIN
     END IF;
 END $$;
 
+-- Add utility_shared_properties junction table for cross-property utility sharing
+CREATE TABLE IF NOT EXISTS utility_shared_properties (
+    id BIGSERIAL PRIMARY KEY,
+    utility_entry_id BIGINT NOT NULL,
+    property_id BIGINT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_usp_utility_entry FOREIGN KEY (utility_entry_id) REFERENCES utility_entries (id) ON DELETE CASCADE,
+    CONSTRAINT fk_usp_property FOREIGN KEY (property_id) REFERENCES properties (id) ON DELETE CASCADE,
+    CONSTRAINT unique_usp UNIQUE(utility_entry_id, property_id)
+);
+CREATE INDEX IF NOT EXISTS idx_usp_entry ON utility_shared_properties (utility_entry_id);
+CREATE INDEX IF NOT EXISTS idx_usp_property ON utility_shared_properties (property_id);
+
 -- Add payment_adjustments table for tracking overpayments/underpayments
 CREATE TABLE IF NOT EXISTS payment_adjustments (
     id BIGSERIAL PRIMARY KEY,

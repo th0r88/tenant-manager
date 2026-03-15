@@ -8,8 +8,45 @@ const router = express.Router();
 router.get('/', async (req, res) => {
     try {
         const propertyId = req.query.property_id || 1;
-        const result = await db.query('SELECT * FROM utility_entries WHERE property_id = $1 ORDER BY year DESC, month DESC', [propertyId]);
-        res.json(result.rows);
+        // Include utilities that are shared WITH this property (not just owned by it)
+        const result = await db.query(
+            `SELECT DISTINCT ue.* FROM utility_entries ue
+             LEFT JOIN utility_shared_properties usp ON ue.id = usp.utility_entry_id
+             WHERE ue.property_id = $1 OR usp.property_id = $1
+             ORDER BY ue.year DESC, ue.month DESC`,
+            [propertyId]
+        );
+
+        // Batch-fetch shared property links for all returned utilities
+        const utilities = result.rows;
+        if (utilities.length > 0) {
+            const utilityIds = utilities.map(u => u.id);
+            const placeholders = utilityIds.map((_, i) => `$${i + 1}`).join(', ');
+            const sharedResult = await db.query(
+                `SELECT utility_entry_id, property_id FROM utility_shared_properties WHERE utility_entry_id IN (${placeholders})`,
+                utilityIds
+            );
+
+            // Build a map: utility_entry_id -> [property_ids]
+            const sharedMap = {};
+            for (const row of sharedResult.rows) {
+                if (!sharedMap[row.utility_entry_id]) sharedMap[row.utility_entry_id] = [];
+                sharedMap[row.utility_entry_id].push(row.property_id);
+            }
+
+            for (const utility of utilities) {
+                const sharedIds = sharedMap[utility.id];
+                if (sharedIds) {
+                    utility.shared_property_ids = sharedIds;
+                    utility.is_shared = true;
+                } else {
+                    utility.shared_property_ids = [];
+                    utility.is_shared = false;
+                }
+            }
+        }
+
+        res.json(utilities);
     } catch (err) {
         console.error('Error fetching utilities:', err);
         res.status(500).json({ error: 'Internal server error' });
@@ -18,15 +55,39 @@ router.get('/', async (req, res) => {
 
 router.post('/', validateUtility, async (req, res) => {
     try {
-        const { property_id = 1, month, year, utility_type, total_amount, allocation_method } = req.body;
-        
+        const { property_id = 1, month, year, utility_type, total_amount, allocation_method, shared_property_ids } = req.body;
+
+        // Validate shared property IDs before any writes
+        let validatedSharedIds = null;
+        if (shared_property_ids && Array.isArray(shared_property_ids) && shared_property_ids.length > 0) {
+            validatedSharedIds = new Set(shared_property_ids.map(Number));
+            validatedSharedIds.add(Number(property_id));
+
+            const idsArray = [...validatedSharedIds];
+            const placeholders = idsArray.map((_, i) => `$${i + 1}`).join(', ');
+            const propCheck = await db.query(`SELECT id FROM properties WHERE id IN (${placeholders})`, idsArray);
+            if (propCheck.rows.length !== idsArray.length) {
+                return res.status(400).json({ error: 'One or more shared property IDs not found' });
+            }
+        }
+
         const result = await db.query(
             'INSERT INTO utility_entries (property_id, month, year, utility_type, total_amount, allocation_method) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
             [property_id, month, year, utility_type, total_amount, allocation_method]
         );
-        
+
         const newId = result.rows[0].id;
-        
+
+        // Insert shared property links
+        if (validatedSharedIds) {
+            for (const pid of validatedSharedIds) {
+                await db.query(
+                    'INSERT INTO utility_shared_properties (utility_entry_id, property_id) VALUES ($1, $2)',
+                    [newId, pid]
+                );
+            }
+        }
+
         try {
             await calculateAllocations(newId);
             res.json({ id: newId, ...req.body });
@@ -41,17 +102,49 @@ router.post('/', validateUtility, async (req, res) => {
 
 router.put('/:id', async (req, res) => {
     try {
-        const { month, year, utility_type, total_amount, allocation_method } = req.body;
-        
-        // Delete existing allocations
+        const { month, year, utility_type, total_amount, allocation_method, shared_property_ids } = req.body;
+
+        // Validate shared property IDs before any destructive operations
+        let validatedSharedIds = null;
+        if (shared_property_ids && Array.isArray(shared_property_ids) && shared_property_ids.length > 0) {
+            // Get the utility's primary property_id
+            const utilityResult = await db.query('SELECT property_id FROM utility_entries WHERE id = $1', [req.params.id]);
+            const primaryPropertyId = utilityResult.rows[0]?.property_id;
+            if (!primaryPropertyId) {
+                return res.status(404).json({ error: 'Utility entry not found' });
+            }
+
+            validatedSharedIds = new Set(shared_property_ids.map(Number));
+            validatedSharedIds.add(Number(primaryPropertyId));
+
+            const idsArray = [...validatedSharedIds];
+            const placeholders = idsArray.map((_, i) => `$${i + 1}`).join(', ');
+            const propCheck = await db.query(`SELECT id FROM properties WHERE id IN (${placeholders})`, idsArray);
+            if (propCheck.rows.length !== idsArray.length) {
+                return res.status(400).json({ error: 'One or more shared property IDs not found' });
+            }
+        }
+
+        // Now safe to perform destructive operations
         await db.query('DELETE FROM tenant_utility_allocations WHERE utility_entry_id = $1', [req.params.id]);
-        
-        // Update utility entry
+
         await db.query(
             'UPDATE utility_entries SET month=$1, year=$2, utility_type=$3, total_amount=$4, allocation_method=$5 WHERE id=$6',
             [month, year, utility_type, total_amount, allocation_method, req.params.id]
         );
-        
+
+        // Update shared property links
+        await db.query('DELETE FROM utility_shared_properties WHERE utility_entry_id = $1', [req.params.id]);
+
+        if (validatedSharedIds) {
+            for (const pid of validatedSharedIds) {
+                await db.query(
+                    'INSERT INTO utility_shared_properties (utility_entry_id, property_id) VALUES ($1, $2)',
+                    [req.params.id, pid]
+                );
+            }
+        }
+
         try {
             await calculateAllocations(req.params.id);
             res.json({ id: req.params.id, ...req.body });
@@ -66,9 +159,10 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
     try {
-        // Delete allocations first
+        // Delete allocations and shared links first
         await db.query('DELETE FROM tenant_utility_allocations WHERE utility_entry_id = $1', [req.params.id]);
-        
+        await db.query('DELETE FROM utility_shared_properties WHERE utility_entry_id = $1', [req.params.id]);
+
         // Delete utility entry
         const result = await db.query('DELETE FROM utility_entries WHERE id = $1', [req.params.id]);
         
@@ -100,21 +194,23 @@ router.get('/:month/:year', async (req, res) => {
 router.post('/recalculate-all', async (req, res) => {
     try {
         const { property_id = 1, month, year } = req.body;
-        
-        // Get utilities to recalculate (can filter by property, month, year)
-        let query = 'SELECT id, utility_type, month, year FROM utility_entries WHERE property_id = $1';
+
+        // Get utilities to recalculate, including shared utilities linked to this property
+        let query = `SELECT DISTINCT ue.id, ue.utility_type, ue.month, ue.year FROM utility_entries ue
+            LEFT JOIN utility_shared_properties usp ON ue.id = usp.utility_entry_id
+            WHERE (ue.property_id = $1 OR usp.property_id = $1)`;
         let params = [property_id];
-        
+
         if (month) {
-            query += ' AND month = $2';
+            query += ' AND ue.month = $2';
             params.push(month);
         }
         if (year) {
-            query += month ? ' AND year = $3' : ' AND year = $2';
+            query += month ? ' AND ue.year = $3' : ' AND ue.year = $2';
             params.push(year);
         }
-        
-        query += ' ORDER BY year, month';
+
+        query += ' ORDER BY ue.year, ue.month';
         
         const utilitiesResult = await db.query(query, params);
         const utilities = utilitiesResult.rows;

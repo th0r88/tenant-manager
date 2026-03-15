@@ -250,6 +250,9 @@
     "allocationLabel": "Allocation:",
     "editUtilityTooltip": "Edit this utility entry",
     "deleteUtilityTooltip": "Delete this utility entry",
+    "sharedUtility": "Shared across properties",
+    "selectProperties": "Select properties",
+    "shared": "Shared",
     "types": {
       "electricity": "Electricity",
       "water": "Water",

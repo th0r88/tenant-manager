@@ -252,6 +252,9 @@
     "allocationLabel": "Razdelitev:",
     "editUtilityTooltip": "Uredi vnos stroška",
     "deleteUtilityTooltip": "Izbriši vnos stroška",
+    "sharedUtility": "Deljeno med nepremičninami",
+    "selectProperties": "Izberite nepremičnine",
+    "shared": "Deljeno",
     "types": {
       "electricity": "Elektrika",
       "water": "Voda",

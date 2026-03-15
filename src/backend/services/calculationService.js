@@ -17,28 +17,42 @@ export const calculateAllocations = async (utilityEntryId) => {
         // Delete existing allocations for this utility entry
         await db.query('DELETE FROM tenant_utility_allocations WHERE utility_entry_id = $1', [utilityEntryId]);
 
-        // Get tenants for this property during the utility period
+        // Check if this utility is shared across properties
+        const sharedResult = await db.query(
+            'SELECT property_id FROM utility_shared_properties WHERE utility_entry_id = $1',
+            [utilityEntryId]
+        );
+        const allPropertyIds = sharedResult.rows.length > 0
+            ? sharedResult.rows.map(r => r.property_id)
+            : [utility.property_id];
+
+        // Build dynamic placeholders for property IDs
+        const propertyPlaceholders = allPropertyIds.map((_, i) => `$${i + 1}`).join(', ');
+        const dateParamStart = allPropertyIds.length + 1;
+        const dateParamEnd = allPropertyIds.length + 2;
+
+        // Get tenants for all relevant properties during the utility period
         const tenantQuery = `
             SELECT t.*, p.house_area
             FROM tenants t
             JOIN properties p ON t.property_id = p.id
-            WHERE t.property_id = $1
+            WHERE t.property_id IN (${propertyPlaceholders})
             AND (
-                (t.move_in_date <= $2 AND (t.move_out_date IS NULL OR t.move_out_date >= $2))
+                (t.move_in_date <= $${dateParamStart} AND (t.move_out_date IS NULL OR t.move_out_date >= $${dateParamStart}))
                 OR
-                (t.move_in_date <= $3 AND (t.move_out_date IS NULL OR t.move_out_date >= $3))
+                (t.move_in_date <= $${dateParamEnd} AND (t.move_out_date IS NULL OR t.move_out_date >= $${dateParamEnd}))
                 OR
-                (t.move_in_date >= $2 AND t.move_in_date <= $3)
+                (t.move_in_date >= $${dateParamStart} AND t.move_in_date <= $${dateParamEnd})
             )
         `;
-        
+
         const startOfMonth = `${utility.year}-${utility.month.toString().padStart(2, '0')}-01`;
         // Calculate the actual last day of the month to avoid invalid dates like June 31st
         const lastDayOfMonth = new Date(utility.year, utility.month, 0).getDate();
         const endOfMonth = `${utility.year}-${utility.month.toString().padStart(2, '0')}-${lastDayOfMonth.toString().padStart(2, '0')}`;
-        
+
         const tenantsResult = await db.query(tenantQuery, [
-            utility.property_id,
+            ...allPropertyIds,
             startOfMonth,
             endOfMonth
         ]);
@@ -91,42 +105,79 @@ export const calculateAllocations = async (utilityEntryId) => {
             }
 
         } else if (utility.allocation_method === 'per_sqm') {
-            // Calculate per-sqm allocation: (HeatingCost ÷ HouseArea) × RoomArea × occupancy ratio
-            const houseArea = parseFloat(tenants[0]?.house_area) || 0;
-            
-            if (houseArea === 0) {
-                throw new Error('Property house area not found for per-sqm allocation');
-            }
-            
-            // Calculate cost per square meter based on total house area
-            const costPerSqm = precisionMath.divide(utility.total_amount, houseArea);
-            
-            for (const tenant of tenants) {
-                const occupiedDays = calculateOccupiedDays(
-                    tenant.move_in_date,
-                    tenant.move_out_date,
-                    utility.year,
-                    utility.month
-                );
-                
-                if (occupiedDays > 0) {
-                    const tenantRoomArea = parseFloat(tenant.room_area) || 0;
-                    const daysInMonth = new Date(utility.year, utility.month, 0).getDate();
-                    
-                    // Formula: (HeatingCost ÷ HouseArea) × RoomArea × (occupiedDays ÷ daysInMonth)
-                    let allocatedAmount = precisionMath.multiply(costPerSqm, tenantRoomArea);
-                    
-                    // Apply proration if tenant was not there for the full month
-                    if (occupiedDays < daysInMonth) {
-                        const occupancyRatio = occupiedDays / daysInMonth;
-                        allocatedAmount = precisionMath.multiply(allocatedAmount, occupancyRatio);
+            if (allPropertyIds.length > 1) {
+                // Shared per-sqm: use area-days weighted allocation (room_area × occupiedDays)
+                // This ensures 100% cost distribution across all properties
+                let totalAreaDays = 0;
+                const tenantAreaDaysData = [];
+
+                for (const tenant of tenants) {
+                    const occupiedDays = calculateOccupiedDays(
+                        tenant.move_in_date,
+                        tenant.move_out_date,
+                        utility.year,
+                        utility.month
+                    );
+
+                    if (occupiedDays > 0) {
+                        const tenantRoomArea = parseFloat(tenant.room_area) || 0;
+                        const areaDays = tenantRoomArea * occupiedDays;
+                        tenantAreaDaysData.push({ tenant, areaDays });
+                        totalAreaDays += areaDays;
                     }
-                    
+                }
+
+                if (totalAreaDays === 0) {
+                    throw new Error('No area-days found for shared per-sqm allocation');
+                }
+
+                const costPerAreaDay = precisionMath.divide(utility.total_amount, totalAreaDays);
+
+                for (const { tenant, areaDays } of tenantAreaDaysData) {
+                    const allocatedAmount = precisionMath.multiply(costPerAreaDay, areaDays);
                     allocations.push({
                         tenant_id: tenant.id,
                         utility_entry_id: utilityEntryId,
                         allocated_amount: parseFloat(allocatedAmount.toFixed(2))
                     });
+                }
+            } else {
+                // Single-property per-sqm: original formula (HeatingCost ÷ HouseArea) × RoomArea × occupancy ratio
+                const houseArea = parseFloat(tenants[0]?.house_area) || 0;
+
+                if (houseArea === 0) {
+                    throw new Error('Property house area not found for per-sqm allocation');
+                }
+
+                const costPerSqm = precisionMath.divide(utility.total_amount, houseArea);
+
+                for (const tenant of tenants) {
+                    const occupiedDays = calculateOccupiedDays(
+                        tenant.move_in_date,
+                        tenant.move_out_date,
+                        utility.year,
+                        utility.month
+                    );
+
+                    if (occupiedDays > 0) {
+                        const tenantRoomArea = parseFloat(tenant.room_area) || 0;
+                        const daysInMonth = new Date(utility.year, utility.month, 0).getDate();
+
+                        // Formula: (HeatingCost ÷ HouseArea) × RoomArea × (occupiedDays ÷ daysInMonth)
+                        let allocatedAmount = precisionMath.multiply(costPerSqm, tenantRoomArea);
+
+                        // Apply proration if tenant was not there for the full month
+                        if (occupiedDays < daysInMonth) {
+                            const occupancyRatio = occupiedDays / daysInMonth;
+                            allocatedAmount = precisionMath.multiply(allocatedAmount, occupancyRatio);
+                        }
+
+                        allocations.push({
+                            tenant_id: tenant.id,
+                            utility_entry_id: utilityEntryId,
+                            allocated_amount: parseFloat(allocatedAmount.toFixed(2))
+                        });
+                    }
                 }
             }
 

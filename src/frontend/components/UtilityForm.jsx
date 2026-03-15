@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
 
-export default function UtilityForm({ onSubmit, initialData = {}, onCancel, selectedProperty, onUtilityAdded }) {
+export default function UtilityForm({ onSubmit, initialData = {}, onCancel, selectedProperty, onUtilityAdded, properties = [] }) {
     const { t, getMonthNames, getUtilityTypes } = useTranslation();
     
     // Helper function to get previous month
@@ -31,10 +31,19 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
             allocation_method: 'per_person'
         };
     });
+    const [isShared, setIsShared] = useState(false);
+    const [sharedPropertyIds, setSharedPropertyIds] = useState([]);
 
     useEffect(() => {
         if (initialData && initialData.id) {
             setFormData(initialData);
+            if (initialData.shared_property_ids && initialData.shared_property_ids.length > 0) {
+                setIsShared(true);
+                setSharedPropertyIds(initialData.shared_property_ids.map(Number));
+            } else {
+                setIsShared(false);
+                setSharedPropertyIds([]);
+            }
         } else {
             const { month, year } = getPreviousMonth();
             setFormData({
@@ -44,6 +53,8 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                 total_amount: '',
                 allocation_method: 'per_person'
             });
+            setIsShared(false);
+            setSharedPropertyIds([]);
         }
     }, [initialData]);
 
@@ -56,6 +67,10 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
             total_amount: parseFloat(formData.total_amount),
             property_id: selectedProperty?.id || 1
         };
+
+        if (isShared && sharedPropertyIds.length > 0) {
+            submittedData.shared_property_ids = sharedPropertyIds;
+        }
         
         onSubmit(submittedData);
         
@@ -73,6 +88,8 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                 total_amount: '',
                 allocation_method: 'per_person'
             });
+            setIsShared(false);
+            setSharedPropertyIds([]);
         }
     };
 
@@ -167,6 +184,57 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                             </select>
                         </div>
                     </div>
+                    {properties.length > 1 && (
+                        <div className="mt-4">
+                            <div className="form-control">
+                                <label className="label cursor-pointer justify-start gap-3">
+                                    <input
+                                        type="checkbox"
+                                        className="checkbox checkbox-primary"
+                                        checked={isShared}
+                                        onChange={(e) => {
+                                            const checked = e.target.checked;
+                                            setIsShared(checked);
+                                            if (checked) {
+                                                // Pre-select current property
+                                                setSharedPropertyIds([selectedProperty?.id].filter(Boolean));
+                                            } else {
+                                                setSharedPropertyIds([]);
+                                            }
+                                        }}
+                                    />
+                                    <span className="label-text font-semibold">{t('utilities.sharedUtility')}</span>
+                                </label>
+                            </div>
+                            {isShared && (
+                                <div className="ml-10 mt-2 space-y-1">
+                                    <p className="text-sm opacity-70 mb-2">{t('utilities.selectProperties')}</p>
+                                    {properties.map(prop => {
+                                        const isCurrentProperty = prop.id === selectedProperty?.id;
+                                        const isChecked = sharedPropertyIds.includes(prop.id);
+                                        return (
+                                            <label key={prop.id} className="label cursor-pointer justify-start gap-3 py-1">
+                                                <input
+                                                    type="checkbox"
+                                                    className="checkbox checkbox-sm"
+                                                    checked={isChecked || isCurrentProperty}
+                                                    disabled={isCurrentProperty}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSharedPropertyIds([...sharedPropertyIds, prop.id]);
+                                                        } else {
+                                                            setSharedPropertyIds(sharedPropertyIds.filter(id => id !== prop.id));
+                                                        }
+                                                    }}
+                                                />
+                                                <span className="label-text">{prop.name}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
                     <div className="card-actions justify-end mt-6">
                         {initialData?.id && (
                             <button type="button" className="btn btn-ghost" onClick={onCancel}>

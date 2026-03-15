@@ -80,6 +80,18 @@ CREATE TABLE IF NOT EXISTS payment_adjustments (
     UNIQUE(tenant_id, month, year)
 );
 
+CREATE TABLE IF NOT EXISTS utility_shared_properties (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    utility_entry_id INTEGER NOT NULL,
+    property_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (utility_entry_id) REFERENCES utility_entries (id) ON DELETE CASCADE,
+    FOREIGN KEY (property_id) REFERENCES properties (id) ON DELETE CASCADE,
+    UNIQUE(utility_entry_id, property_id)
+);
+CREATE INDEX IF NOT EXISTS idx_usp_entry ON utility_shared_properties (utility_entry_id);
+CREATE INDEX IF NOT EXISTS idx_usp_property ON utility_shared_properties (property_id);
+
 -- Efficient date-range indexes for occupancy queries
 CREATE INDEX IF NOT EXISTS idx_tenants_move_in_date ON tenants (move_in_date);
 CREATE INDEX IF NOT EXISTS idx_tenants_move_out_date ON tenants (move_out_date);

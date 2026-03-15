@@ -703,7 +703,7 @@ function AppContent() {
             
             {activeTab === 'utilities' && (
                 <>
-                    <UtilityForm onSubmit={handleUtilitySubmit} initialData={editingUtility} onCancel={() => setEditingUtility(null)} selectedProperty={selectedProperty} />
+                    <UtilityForm onSubmit={handleUtilitySubmit} initialData={editingUtility} onCancel={() => setEditingUtility(null)} selectedProperty={selectedProperty} properties={properties} />
                     <div>
                         <h2 className="text-2xl font-bold mb-4">{t('utilities.title')}</h2>
                         
@@ -792,11 +792,21 @@ function AppContent() {
                                     {filteredUtilities.map((utility) => (
                                     <div key={utility.id} className="card bg-base-100 shadow-xl">
                                         <div className="card-body">
-                                            <h3 className="card-title">{getUtilityTypes().find(type => type.key === utility.utility_type)?.label || utility.utility_type}</h3>
+                                            <h3 className="card-title">
+                                                {getUtilityTypes().find(type => type.key === utility.utility_type)?.label || utility.utility_type}
+                                                {utility.is_shared && (
+                                                    <span className="badge badge-info badge-sm ml-2">{t('utilities.shared')}</span>
+                                                )}
+                                            </h3>
                                             <div className="space-y-2">
                                                 <p><span className="font-semibold">{t('utilities.period')}</span> {utility.month}/{utility.year}</p>
                                                 <p><span className="font-semibold">{t('utilities.totalAmountLabel')}</span> {formatCurrency(utility.total_amount)}</p>
                                                 <p><span className="font-semibold">{t('utilities.allocationLabel')}</span> {utility.allocation_method === 'per_person' ? t('utilities.perPerson') : utility.allocation_method === 'per_sqm' ? 'po m²' : utility.allocation_method}</p>
+                                                {utility.is_shared && utility.shared_property_ids && (
+                                                    <p className="text-sm opacity-70">
+                                                        {utility.shared_property_ids.map(pid => properties.find(p => p.id === pid)?.name).filter(Boolean).join(', ')}
+                                                    </p>
+                                                )}
                                             </div>
                                             <div className="card-actions justify-end mt-4">
                                                 <div className="tooltip" data-tip={t('utilities.editUtilityTooltip')}>

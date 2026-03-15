@@ -14,7 +14,7 @@ const { Client } = pkg;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const ALLOWED_TABLES = ['properties', 'tenants', 'utility_entries', 'tenant_utility_allocations', 'billing_periods', 'occupancy_tracking', 'payment_adjustments'];
+const ALLOWED_TABLES = ['properties', 'tenants', 'utility_entries', 'tenant_utility_allocations', 'billing_periods', 'occupancy_tracking', 'payment_adjustments', 'utility_shared_properties'];
 
 function validateTableName(tableName) {
     if (!ALLOWED_TABLES.includes(tableName)) {
