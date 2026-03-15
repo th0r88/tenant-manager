@@ -1,7 +1,7 @@
 # Tenant Management System - Production Dockerfile
 
 # Build stage for frontend
-FROM node:22-alpine AS builder
+FROM node:22.22-alpine AS builder
 
 WORKDIR /app
 
@@ -18,16 +18,13 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:22-alpine AS production
+FROM node:22.22-alpine AS production
+
+# Patch base image vulnerabilities
+RUN apk upgrade --no-cache
 
 # Set working directory
 WORKDIR /app
-
-# Install build dependencies for sqlite3 and other native modules
-RUN apk add --no-cache --virtual .build-deps \
-    python3 \
-    make \
-    g++
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S tenant-manager && \
@@ -36,10 +33,9 @@ RUN addgroup -g 1001 -S tenant-manager && \
 # Copy package files
 COPY package*.json ./
 
-# Install only production dependencies and clean up build deps in one layer
+# Install only production dependencies (better-sqlite3 uses prebuilds, no build tools needed)
 RUN npm install --omit=dev --prefer-offline --no-audit && \
-    npm cache clean --force && \
-    apk del .build-deps
+    npm cache clean --force
 
 # Copy application code (backend)
 COPY src/ ./src/

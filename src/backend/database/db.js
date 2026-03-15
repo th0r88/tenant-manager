@@ -1,4 +1,4 @@
-import sqlite3 from 'sqlite3';
+import Database from 'better-sqlite3';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -35,24 +35,16 @@ async function initializeAdapter() {
 
 // Legacy file-based connection for backward compatibility
 function initializeLegacyConnection() {
-    sqlite3.verbose();
-    
     const config = environmentConfig.getDatabaseConfig();
-    legacyDb = new sqlite3.Database(config.path, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
-        if (err) {
-            console.error('Error opening legacy database:', err);
-        } else {
-            console.log('Legacy database opened successfully');
-            // Enable foreign keys and set encoding immediately after opening
-            legacyDb.exec('PRAGMA foreign_keys = ON; PRAGMA encoding = "UTF-8";', (err) => {
-                if (err) {
-                    console.error('Error setting pragma:', err);
-                } else {
-                    console.log('Legacy database pragma settings applied');
-                }
-            });
-        }
-    });
+    try {
+        legacyDb = new Database(config.path);
+        legacyDb.pragma('foreign_keys = ON');
+        legacyDb.pragma('encoding = "UTF-8"');
+        console.log('Legacy database opened successfully');
+        console.log('Legacy database pragma settings applied');
+    } catch (err) {
+        console.error('Error opening legacy database:', err);
+    }
 }
 
 // Initialize database with unified interface
@@ -83,43 +75,27 @@ export async function initializeDatabase() {
 // Legacy migration function for backward compatibility
 function runMigration() {
     const migration = readFileSync(join(__dirname, 'migration.sql'), 'utf8');
-    
-    return new Promise((resolve, reject) => {
-        if (legacyDb) {
-            legacyDb.exec(migration, (error) => {
-                if (error) {
-                    console.log('Migration skipped (likely new installation)');
-                    resolve(); // Don't fail on migration errors for new installations
-                } else {
-                    console.log('Migration completed successfully');
-                    resolve();
-                }
-            });
-        } else {
-            resolve();
+    if (legacyDb) {
+        try {
+            legacyDb.exec(migration);
+            console.log('Migration completed successfully');
+        } catch (error) {
+            console.log('Migration skipped (likely new installation)');
         }
-    });
+    }
 }
 
 // Legacy constraints function for backward compatibility
 function applyConstraints() {
     const constraints = readFileSync(join(__dirname, 'constraints.sql'), 'utf8');
-    
-    return new Promise((resolve, reject) => {
-        if (legacyDb) {
-            legacyDb.exec(constraints, (error) => {
-                if (error) {
-                    console.log('Some constraints skipped (may already exist)');
-                    resolve(); // Don't fail on constraint errors
-                } else {
-                    console.log('Database constraints applied successfully');
-                    resolve();
-                }
-            });
-        } else {
-            resolve();
+    if (legacyDb) {
+        try {
+            legacyDb.exec(constraints);
+            console.log('Database constraints applied successfully');
+        } catch (error) {
+            console.log('Some constraints skipped (may already exist)');
         }
-    });
+    }
 }
 
 // Database query wrapper with adapter pattern
@@ -157,16 +133,12 @@ export async function closeDatabase() {
         await dbAdapter.close();
     }
     if (legacyDb) {
-        return new Promise((resolve) => {
-            legacyDb.close((err) => {
-                if (err) {
-                    console.error('Error closing legacy database:', err);
-                } else {
-                    console.log('Legacy database closed');
-                }
-                resolve();
-            });
-        });
+        try {
+            legacyDb.close();
+            console.log('Legacy database closed');
+        } catch (err) {
+            console.error('Error closing legacy database:', err);
+        }
     }
 }
 
@@ -180,76 +152,72 @@ export const db = legacyDb;
 
 // Default export maintains backward compatibility
 export default {
-    // Legacy interface
+    // Legacy interface (better-sqlite3 is synchronous, but we keep callback pattern for compat)
     all: (sql, params, callback) => {
-        // Handle both 2 and 3 parameter calls
         if (typeof params === 'function') {
             callback = params;
             params = [];
         }
-        
         if (legacyDb) {
-            return legacyDb.all(sql, params, callback);
+            try {
+                const rows = legacyDb.prepare(sql).all(...(params || []));
+                if (callback) callback(null, rows);
+            } catch (err) {
+                if (callback) callback(err);
+            }
         } else {
-            // Fallback to adapter
             query(sql, params)
-                .then(result => {
-                    if (callback) callback(null, result.rows);
-                })
-                .catch(err => {
-                    if (callback) callback(err);
-                });
+                .then(result => { if (callback) callback(null, result.rows); })
+                .catch(err => { if (callback) callback(err); });
         }
     },
-    
+
     get: (sql, params, callback) => {
-        // Handle both 2 and 3 parameter calls
         if (typeof params === 'function') {
             callback = params;
             params = [];
         }
-        
         if (legacyDb) {
-            return legacyDb.get(sql, params, callback);
+            try {
+                const row = legacyDb.prepare(sql).get(...(params || []));
+                if (callback) callback(null, row);
+            } catch (err) {
+                if (callback) callback(err);
+            }
         } else {
-            // Fallback to adapter
             query(sql, params)
-                .then(result => {
-                    if (callback) callback(null, result.rows[0]);
-                })
-                .catch(err => {
-                    if (callback) callback(err);
-                });
+                .then(result => { if (callback) callback(null, result.rows[0]); })
+                .catch(err => { if (callback) callback(err); });
         }
     },
-    
+
     run: (sql, params, callback) => {
         if (legacyDb) {
-            return legacyDb.run(sql, params, callback);
+            try {
+                const result = legacyDb.prepare(sql).run(...(params || []));
+                if (callback) callback.call({ changes: result.changes, lastID: result.lastInsertRowid }, null);
+            } catch (err) {
+                if (callback) callback(err);
+            }
         } else {
-            // Fallback to adapter
             query(sql, params)
-                .then(result => {
-                    if (callback) callback.call({ changes: result.changes, lastID: result.lastID }, null);
-                })
-                .catch(err => {
-                    if (callback) callback(err);
-                });
+                .then(result => { if (callback) callback.call({ changes: result.changes, lastID: result.lastID }, null); })
+                .catch(err => { if (callback) callback(err); });
         }
     },
-    
+
     exec: (sql, callback) => {
         if (legacyDb) {
-            return legacyDb.exec(sql, callback);
+            try {
+                legacyDb.exec(sql);
+                if (callback) callback(null);
+            } catch (err) {
+                if (callback) callback(err);
+            }
         } else {
-            // Fallback to adapter
             exec(sql)
-                .then(result => {
-                    if (callback) callback(null);
-                })
-                .catch(err => {
-                    if (callback) callback(err);
-                });
+                .then(() => { if (callback) callback(null); })
+                .catch(err => { if (callback) callback(err); });
         }
     },
     

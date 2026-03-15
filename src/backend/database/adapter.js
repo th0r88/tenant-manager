@@ -1,4 +1,4 @@
-import sqlite3 from 'sqlite3';
+import Database from 'better-sqlite3';
 import pkg from 'pg';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -208,29 +208,22 @@ export default class DatabaseAdapter {
     }
 
     /**
-     * Initialize SQLite connection (legacy)
+     * Initialize SQLite connection using better-sqlite3
      */
     async initializeSQLite() {
         console.log('Initializing SQLite connection...');
-        
-        sqlite3.verbose();
-        
-        this.connection = new sqlite3.Database(this.config.path, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
-            if (err) {
-                console.error('Error opening SQLite database:', err);
-                throw err;
-            } else {
-                console.log('SQLite database opened successfully');
-                // Enable foreign keys and set encoding
-                this.connection.exec('PRAGMA foreign_keys = ON; PRAGMA encoding = "UTF-8";', (err) => {
-                    if (err) {
-                        console.error('Error setting SQLite pragma:', err);
-                    } else {
-                        console.log('SQLite pragma settings applied');
-                    }
-                });
-            }
-        });
+
+        try {
+            this.connection = new Database(this.config.path);
+            this.connection.pragma('foreign_keys = ON');
+            this.connection.pragma('encoding = "UTF-8"');
+            this.connection.pragma('journal_mode = WAL');
+            console.log('SQLite database opened successfully');
+            console.log('SQLite pragma settings applied');
+        } catch (err) {
+            console.error('Error opening SQLite database:', err);
+            throw err;
+        }
     }
 
     /**
@@ -455,23 +448,33 @@ export default class DatabaseAdapter {
     }
 
     /**
-     * Execute SQLite query
+     * Execute SQLite query using better-sqlite3 (synchronous)
      */
     async sqliteQuery(sql, params = []) {
-        return new Promise((resolve, reject) => {
-            this.connection.all(sql, params, (err, rows) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve({
-                        rows: rows || [],
-                        rowCount: rows?.length || 0,
-                        changes: this.connection.changes,
-                        lastID: this.connection.lastID
-                    });
-                }
-            });
-        });
+        try {
+            const stmt = this.connection.prepare(sql);
+            // Determine if it's a SELECT/RETURNING or a write operation
+            const sqlTrimmed = sql.trimStart().toUpperCase();
+            if (sqlTrimmed.startsWith('SELECT') || sqlTrimmed.startsWith('PRAGMA') || sql.toUpperCase().includes('RETURNING')) {
+                const rows = stmt.all(...params);
+                return {
+                    rows: rows || [],
+                    rowCount: rows?.length || 0,
+                    changes: 0,
+                    lastID: null
+                };
+            } else {
+                const result = stmt.run(...params);
+                return {
+                    rows: [],
+                    rowCount: result.changes,
+                    changes: result.changes,
+                    lastID: result.lastInsertRowid
+                };
+            }
+        } catch (err) {
+            throw err;
+        }
     }
 
     /**
@@ -515,18 +518,15 @@ export default class DatabaseAdapter {
     }
 
     /**
-     * Execute SQLite exec
+     * Execute SQLite exec using better-sqlite3 (synchronous)
      */
     async sqliteExec(sql) {
-        return new Promise((resolve, reject) => {
-            this.connection.exec(sql, (err) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(true);
-                }
-            });
-        });
+        try {
+            this.connection.exec(sql);
+            return true;
+        } catch (err) {
+            throw err;
+        }
     }
 
     /**
@@ -588,14 +588,12 @@ export default class DatabaseAdapter {
                     break;
                 case 'file':
                 default:
-                    return new Promise((resolve) => {
-                        this.connection.close((err) => {
-                            if (err) {
-                                console.error('Error closing SQLite database:', err);
-                            }
-                            resolve();
-                        });
-                    });
+                    try {
+                        this.connection.close();
+                    } catch (err) {
+                        console.error('Error closing SQLite database:', err);
+                    }
+                    return;
             }
         }
     }

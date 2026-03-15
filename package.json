@@ -27,6 +27,7 @@
   "dependencies": {
     "archiver": "^7.0.1",
     "axios": "^1.6.0",
+    "better-sqlite3": "^12.8.0",
     "cors": "^2.8.5",
     "daisyui": "^5.0.43",
     "decimal.js": "^10.5.0",
@@ -39,8 +40,7 @@
     "pdfkit": "^0.13.0",
     "pg": "^8.11.3",
     "qrcode": "^1.5.4",
-    "react-i18next": "^15.5.3",
-    "sqlite3": "^6.0.1"
+    "react-i18next": "^15.5.3"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",

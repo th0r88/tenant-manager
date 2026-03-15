@@ -1,4 +1,4 @@
-import sqlite3 from 'sqlite3';
+import Database from 'better-sqlite3';
 import pkg from 'pg';
 import { promises as fs, readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
 import { join, dirname } from 'path';
@@ -315,51 +315,25 @@ class BackupService {
      * Create SQLite database from SQL dump
      */
     async createSqliteFromDump(backupPath, sqlDump) {
-        return new Promise((resolve, reject) => {
-            const db = new sqlite3.Database(backupPath, (err) => {
-                if (err) {
-                    reject(new Error(`Failed to create backup database: ${err.message}`));
-                    return;
-                }
-
-                db.exec(sqlDump, (err) => {
-                    if (err) {
-                        reject(new Error(`Failed to execute SQL dump: ${err.message}`));
-                        return;
-                    }
-
-                    db.close((err) => {
-                        if (err) {
-                            reject(new Error(`Failed to close backup database: ${err.message}`));
-                        } else {
-                            resolve();
-                        }
-                    });
-                });
-            });
-        });
+        const db = new Database(backupPath);
+        try {
+            db.exec(sqlDump);
+        } finally {
+            db.close();
+        }
     }
 
     /**
      * Create backup from file-based database
      */
     async createFileBackup(backupPath, options = {}) {
-        return new Promise((resolve, reject) => {
-            const sourceDb = new sqlite3.Database(this.dbPath);
-            const targetDb = new sqlite3.Database(backupPath);
-            
-            sourceDb.backup(targetDb, (err) => {
-                sourceDb.close();
-                targetDb.close();
-                
-                if (err) {
-                    reject(new Error(`File backup failed: ${err.message}`));
-                } else {
-                    console.log(`📦 File backup completed: ${backupPath}`);
-                    resolve();
-                }
-            });
-        });
+        const sourceDb = new Database(this.dbPath, { readonly: true });
+        try {
+            await sourceDb.backup(backupPath);
+            console.log(`📦 File backup completed: ${backupPath}`);
+        } finally {
+            sourceDb.close();
+        }
     }
 
     /**
@@ -587,106 +561,51 @@ class BackupService {
      * Restore database using SQL dump approach
      */
     async restoreSqlDumpBackup(backupPath, client) {
-        return new Promise((resolve, reject) => {
-            const db = new sqlite3.Database(backupPath, sqlite3.OPEN_READONLY, async (err) => {
-                if (err) {
-                    reject(new Error(`Failed to open backup database: ${err.message}`));
-                    return;
+        const db = new Database(backupPath, { readonly: true });
+        try {
+            const tables = db.prepare(getQueryTemplate('systemTables', 'sqlite')).all();
+
+            // Drop existing tables
+            for (const table of tables) {
+                validateTableName(table.name);
+                await client.post('/exec', { sql: `DROP TABLE IF EXISTS ${table.name}` });
+            }
+
+            // Recreate tables and restore data
+            for (const table of tables) {
+                validateTableName(table.name);
+                const schema = db.prepare(getQueryTemplate('systemTablesByName', 'sqlite')).get(table.name);
+
+                await client.post('/exec', { sql: schema.sql });
+
+                const rows = db.prepare(`SELECT * FROM ${table.name}`).all();
+                if (rows.length > 0) {
+                    const columns = Object.keys(rows[0]);
+                    const placeholders = columns.map(() => '?').join(', ');
+                    const sql = `INSERT INTO ${table.name} (${columns.join(', ')}) VALUES (${placeholders})`;
+
+                    for (const row of rows) {
+                        const values = columns.map(col => row[col]);
+                        await client.post('/query', { sql, params: values });
+                    }
                 }
-
-                try {
-                    // Get all tables from backup
-                    const config = environmentConfig.getDatabaseConfig();
-                    db.all(getQueryTemplate('systemTables', 'sqlite'), async (err, tables) => {
-                        if (err) {
-                            reject(new Error(`Failed to get tables: ${err.message}`));
-                            return;
-                        }
-
-                        try {
-                            // Drop existing tables
-                            for (const table of tables) {
-                                validateTableName(table.name);
-                                await client.post('/exec', {
-                                    sql: `DROP TABLE IF EXISTS ${table.name}`
-                                });
-                            }
-
-                            // Recreate tables and restore data
-                            for (const table of tables) {
-                                validateTableName(table.name);
-                                // Get table schema
-                                db.get(getQueryTemplate('systemTablesByName', 'sqlite'), [table.name], async (err, schema) => {
-                                    if (err) {
-                                        reject(new Error(`Failed to get schema for ${table.name}: ${err.message}`));
-                                        return;
-                                    }
-
-                                    try {
-                                        // Create table
-                                        await client.post('/exec', {
-                                            sql: schema.sql
-                                        });
-
-                                        // Restore data
-                                        db.all(`SELECT * FROM ${table.name}`, async (err, rows) => {
-                                            if (err) {
-                                                reject(new Error(`Failed to get data from ${table.name}: ${err.message}`));
-                                                return;
-                                            }
-
-                                            if (rows.length > 0) {
-                                                const columns = Object.keys(rows[0]);
-                                                const placeholders = columns.map(() => '?').join(', ');
-                                                const sql = `INSERT INTO ${table.name} (${columns.join(', ')}) VALUES (${placeholders})`;
-
-                                                for (const row of rows) {
-                                                    const values = columns.map(col => row[col]);
-                                                    await client.post('/query', {
-                                                        sql: sql,
-                                                        params: values
-                                                    });
-                                                }
-                                            }
-                                        });
-                                    } catch (error) {
-                                        reject(new Error(`Failed to restore table ${table.name}: ${error.message}`));
-                                    }
-                                });
-                            }
-
-                            resolve();
-                        } catch (error) {
-                            reject(error);
-                        }
-                    });
-                } catch (error) {
-                    reject(error);
-                }
-            });
-        });
+            }
+        } finally {
+            db.close();
+        }
     }
 
     /**
      * Restore file-based database from backup
      */
     async restoreFileBackup(backupPath, options = {}) {
-        return new Promise((resolve, reject) => {
-            const sourceDb = new sqlite3.Database(backupPath);
-            const targetDb = new sqlite3.Database(this.dbPath);
-            
-            sourceDb.backup(targetDb, (err) => {
-                sourceDb.close();
-                targetDb.close();
-                
-                if (err) {
-                    reject(new Error(`File restore failed: ${err.message}`));
-                } else {
-                    console.log(`📦 File restore completed: ${backupPath}`);
-                    resolve();
-                }
-            });
-        });
+        const sourceDb = new Database(backupPath, { readonly: true });
+        try {
+            await sourceDb.backup(this.dbPath);
+            console.log(`📦 File restore completed: ${backupPath}`);
+        } finally {
+            sourceDb.close();
+        }
     }
 
     async listBackups() {
@@ -811,30 +730,18 @@ class BackupService {
                 };
             } else {
                 // SQLite database verification
-                return new Promise((resolve, reject) => {
-                    const db = new sqlite3.Database(backupPath, sqlite3.OPEN_READONLY, (err) => {
-                        if (err) {
-                            reject(new Error(`Cannot open backup database: ${err.message}`));
-                            return;
-                        }
-
-                        // Test basic queries
-                        db.get(getQueryTemplate('systemTableCount', 'sqlite'), (err, row) => {
-                            db.close();
-                            
-                            if (err) {
-                                reject(new Error(`Backup database query failed: ${err.message}`));
-                            } else {
-                                resolve({
-                                    valid: true,
-                                    checksum: currentChecksum,
-                                    tables: row.count,
-                                    metadata: metadata
-                                });
-                            }
-                        });
-                    });
-                });
+                const db = new Database(backupPath, { readonly: true });
+                try {
+                    const row = db.prepare(getQueryTemplate('systemTableCount', 'sqlite')).get();
+                    return {
+                        valid: true,
+                        checksum: currentChecksum,
+                        tables: row.count,
+                        metadata: metadata
+                    };
+                } finally {
+                    db.close();
+                }
             }
         } catch (error) {
             throw new Error(`Backup verification failed: ${error.message}`);
