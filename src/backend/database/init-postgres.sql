@@ -68,9 +68,6 @@ CREATE TABLE IF NOT EXISTS utility_entries (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_utility_entries_property FOREIGN KEY (property_id) REFERENCES properties (id) ON DELETE CASCADE
 );
-CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_utility_entry
-    ON utility_entries (property_id, month, year, utility_type)
-    WHERE assigned_tenant_id IS NULL;
 
 -- Tenant utility allocations table
 CREATE TABLE IF NOT EXISTS tenant_utility_allocations (

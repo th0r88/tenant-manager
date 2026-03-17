@@ -32,8 +32,27 @@ BEGIN
     END IF;
 END $$;
 
+-- Update allocation_method CHECK constraint to include 'direct'
+DO $$
+BEGIN
+    ALTER TABLE utility_entries DROP CONSTRAINT IF EXISTS utility_entries_allocation_method_check;
+    ALTER TABLE utility_entries ADD CONSTRAINT utility_entries_allocation_method_check
+        CHECK (allocation_method IN ('per_person', 'per_sqm', 'per_person_weighted', 'per_sqm_weighted', 'direct'));
+EXCEPTION WHEN OTHERS THEN
+    NULL;
+END $$;
+
 -- Add assigned_tenant_id for direct electricity assignment
 ALTER TABLE utility_entries ADD COLUMN IF NOT EXISTS assigned_tenant_id BIGINT;
+
+-- Add FK constraint for assigned_tenant_id
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_utility_entries_assigned_tenant') THEN
+        ALTER TABLE utility_entries ADD CONSTRAINT fk_utility_entries_assigned_tenant
+            FOREIGN KEY (assigned_tenant_id) REFERENCES tenants (id) ON DELETE SET NULL;
+    END IF;
+END $$;
 
 -- Replace unique constraint to allow multiple direct-assigned entries per property/month/type
 ALTER TABLE utility_entries DROP CONSTRAINT IF EXISTS unique_utility_entry;
