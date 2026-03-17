@@ -1,6 +1,6 @@
 # Tenant Management System - Production Dockerfile
 
-# Build stage for frontend
+# Build stage for frontend only - no native modules needed
 FROM node:22.22-alpine AS builder
 
 WORKDIR /app
@@ -8,11 +8,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install build tools for native modules (needed for arm64 QEMU cross-compilation)
-RUN apk add --no-cache --virtual .build-deps python3 make g++
-
-# Install all dependencies (including dev dependencies for building)
-RUN npm ci && apk del .build-deps
+# Install dependencies, skip native module compilation (only need JS for frontend build)
+RUN npm ci --ignore-scripts
 
 # Copy application code
 COPY . .
@@ -36,7 +33,7 @@ RUN addgroup -g 1001 -S tenant-manager && \
 # Copy package files
 COPY package*.json ./
 
-# Install build tools for native modules (needed for arm64 QEMU cross-compilation)
+# Install build tools for native modules (better-sqlite3 needs compilation)
 RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
     npm install --omit=dev --no-audit && \
     npm cache clean --force && \
