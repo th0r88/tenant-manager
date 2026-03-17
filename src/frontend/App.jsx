@@ -801,7 +801,12 @@ function AppContent() {
                                             <div className="space-y-2">
                                                 <p><span className="font-semibold">{t('utilities.period')}</span> {utility.month}/{utility.year}</p>
                                                 <p><span className="font-semibold">{t('utilities.totalAmountLabel')}</span> {formatCurrency(utility.total_amount)}</p>
-                                                <p><span className="font-semibold">{t('utilities.allocationLabel')}</span> {utility.allocation_method === 'per_person' ? t('utilities.perPerson') : utility.allocation_method === 'per_sqm' ? t('utilities.perSquareMeter') : utility.allocation_method === 'direct' ? t('utilities.directAssignment') : utility.allocation_method}</p>
+                                                <p><span className="font-semibold">{t('utilities.allocationLabel')}</span> {{
+                                                    per_person: t('utilities.perPerson'),
+                                                    per_sqm: t('utilities.perSquareMeter'),
+                                                    direct: t('utilities.directAssignment'),
+                                                    per_apartment: t('utilities.perApartment'),
+                                                }[utility.allocation_method] || utility.allocation_method}</p>
                                                 {utility.allocation_method === 'direct' && utility.assigned_tenant_id && (() => {
                                                     const assignedTenant = tenants.find(tenant => tenant.id == utility.assigned_tenant_id);
                                                     return assignedTenant ? (

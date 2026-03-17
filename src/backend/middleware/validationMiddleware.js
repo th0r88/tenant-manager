@@ -165,7 +165,7 @@ export class ValidationMiddleware {
                 allocation_method: {
                     required: true,
                     type: 'string',
-                    enum: ['per_person', 'per_sqm', 'per_person_weighted', 'per_sqm_weighted', 'direct']
+                    enum: ['per_person', 'per_sqm', 'per_person_weighted', 'per_sqm_weighted', 'direct', 'per_apartment']
                 }
             }
         };

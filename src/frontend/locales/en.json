@@ -253,6 +253,7 @@
     "directAssignment": "Direct assignment (meter)",
     "assignToTenant": "Assign to tenant",
     "selectTenant": "Select tenant",
+    "perApartment": "Per apartment",
     "sharedUtility": "Shared across properties",
     "selectProperties": "Select properties",
     "shared": "Shared",

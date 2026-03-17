@@ -199,6 +199,40 @@ export const calculateAllocations = async (utilityEntryId) => {
                 }
             }
 
+        } else if (utility.allocation_method === 'per_apartment') {
+            // Per-apartment: equal split weighted by occupied days (each tenant = 1 apartment)
+            let totalApartmentDays = 0;
+            const tenantDaysData = [];
+
+            for (const tenant of tenants) {
+                const occupiedDays = calculateOccupiedDays(
+                    tenant.move_in_date,
+                    tenant.move_out_date,
+                    utility.year,
+                    utility.month
+                );
+
+                if (occupiedDays > 0) {
+                    tenantDaysData.push({ tenant, occupiedDays });
+                    totalApartmentDays += occupiedDays;
+                }
+            }
+
+            if (totalApartmentDays === 0) {
+                throw new Error('No apartment-days found for per-apartment allocation');
+            }
+
+            const costPerApartmentDay = precisionMath.divide(utility.total_amount, totalApartmentDays);
+
+            for (const { tenant, occupiedDays } of tenantDaysData) {
+                const allocatedAmount = precisionMath.multiply(costPerApartmentDay, occupiedDays);
+                allocations.push({
+                    tenant_id: tenant.id,
+                    utility_entry_id: utilityEntryId,
+                    allocated_amount: parseFloat(allocatedAmount.toFixed(2))
+                });
+            }
+
         } else {
             throw new Error(`Unknown allocation method: ${utility.allocation_method}`);
         }

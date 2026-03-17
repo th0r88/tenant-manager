@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS utility_entries (
     year INTEGER NOT NULL,
     utility_type TEXT NOT NULL,
     total_amount REAL NOT NULL,
-    allocation_method TEXT NOT NULL CHECK (allocation_method IN ('per_person', 'per_sqm', 'per_person_weighted', 'per_sqm_weighted', 'direct')),
+    allocation_method TEXT NOT NULL CHECK (allocation_method IN ('per_person', 'per_sqm', 'per_person_weighted', 'per_sqm_weighted', 'direct', 'per_apartment')),
     assigned_tenant_id INTEGER REFERENCES tenants (id) ON DELETE SET NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (property_id) REFERENCES properties (id) ON DELETE CASCADE

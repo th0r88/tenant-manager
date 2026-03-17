@@ -37,7 +37,7 @@ DO $$
 BEGIN
     ALTER TABLE utility_entries DROP CONSTRAINT IF EXISTS utility_entries_allocation_method_check;
     ALTER TABLE utility_entries ADD CONSTRAINT utility_entries_allocation_method_check
-        CHECK (allocation_method IN ('per_person', 'per_sqm', 'per_person_weighted', 'per_sqm_weighted', 'direct'));
+        CHECK (allocation_method IN ('per_person', 'per_sqm', 'per_person_weighted', 'per_sqm_weighted', 'direct', 'per_apartment'));
 EXCEPTION WHEN OTHERS THEN
     NULL;
 END $$;

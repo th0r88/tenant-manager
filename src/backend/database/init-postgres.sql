@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS utility_entries (
     year INTEGER NOT NULL,
     utility_type TEXT NOT NULL,
     total_amount NUMERIC(10,2) NOT NULL,
-    allocation_method TEXT NOT NULL CHECK (allocation_method IN ('per_person', 'per_sqm', 'per_person_weighted', 'per_sqm_weighted', 'direct')),
+    allocation_method TEXT NOT NULL CHECK (allocation_method IN ('per_person', 'per_sqm', 'per_person_weighted', 'per_sqm_weighted', 'direct', 'per_apartment')),
     assigned_tenant_id BIGINT,
     CONSTRAINT fk_utility_entries_assigned_tenant FOREIGN KEY (assigned_tenant_id) REFERENCES tenants (id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

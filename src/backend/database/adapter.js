@@ -279,8 +279,55 @@ export default class DatabaseAdapter {
             const migration = readFileSync(join(__dirname, migrationFile), 'utf8');
             await this.exec(migration);
             console.log('Migration completed successfully');
+
+            // SQLite: recreate utility_entries if CHECK constraint is outdated
+            if (this.type === 'file') {
+                await this.migrateSqliteUtilityEntries();
+            }
         } catch (error) {
             console.log('Migration skipped (likely new installation):', error.message);
+        }
+    }
+
+    /**
+     * SQLite-specific: recreate utility_entries table to update CHECK constraint
+     * SQLite cannot ALTER CHECK constraints, so we must recreate the table
+     */
+    async migrateSqliteUtilityEntries() {
+        try {
+            // Test if per_apartment is allowed by the current CHECK constraint
+            await this.query(
+                "INSERT INTO utility_entries (property_id, month, year, utility_type, total_amount, allocation_method) VALUES (0, 0, 0, '__check_test__', 0, 'per_apartment')",
+                []
+            );
+            // If it succeeded, delete the test row and we're done
+            await this.query("DELETE FROM utility_entries WHERE utility_type = '__check_test__'", []);
+        } catch (e) {
+            if (e.message && e.message.includes('CHECK')) {
+                console.log('Recreating utility_entries table to update CHECK constraint...');
+                const statements = [
+                    `CREATE TABLE utility_entries_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        property_id INTEGER NOT NULL DEFAULT 1,
+                        month INTEGER NOT NULL,
+                        year INTEGER NOT NULL,
+                        utility_type TEXT NOT NULL,
+                        total_amount REAL NOT NULL,
+                        allocation_method TEXT NOT NULL CHECK (allocation_method IN ('per_person', 'per_sqm', 'per_person_weighted', 'per_sqm_weighted', 'direct', 'per_apartment')),
+                        assigned_tenant_id INTEGER REFERENCES tenants (id) ON DELETE SET NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (property_id) REFERENCES properties (id) ON DELETE CASCADE
+                    )`,
+                    `INSERT INTO utility_entries_new SELECT id, property_id, month, year, utility_type, total_amount, allocation_method, assigned_tenant_id, created_at FROM utility_entries`,
+                    `DROP TABLE utility_entries`,
+                    `ALTER TABLE utility_entries_new RENAME TO utility_entries`,
+                    `CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_utility_entry ON utility_entries (property_id, month, year, utility_type) WHERE assigned_tenant_id IS NULL`
+                ];
+                for (const sql of statements) {
+                    await this.exec(sql);
+                }
+                console.log('utility_entries table recreated with updated CHECK constraint');
+            }
         }
     }
 
