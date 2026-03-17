@@ -69,7 +69,7 @@ router.post('/', validateUtility, async (req, res) => {
             if (tenantCheck.rows.length === 0) {
                 return res.status(400).json({ error: 'Assigned tenant not found' });
             }
-            if (tenantCheck.rows[0].property_id !== Number(property_id)) {
+            if (tenantCheck.rows[0].property_id != property_id) {
                 return res.status(400).json({ error: 'Assigned tenant does not belong to this property' });
             }
         }
@@ -135,7 +135,7 @@ router.put('/:id', async (req, res) => {
             if (tenantCheck.rows.length === 0) {
                 return res.status(400).json({ error: 'Assigned tenant not found' });
             }
-            if (tenantCheck.rows[0].property_id !== Number(propId)) {
+            if (tenantCheck.rows[0].property_id != propId) {
                 return res.status(400).json({ error: 'Assigned tenant does not belong to this property' });
             }
         }
