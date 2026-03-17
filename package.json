@@ -25,6 +25,7 @@
     "backup:cleanup": "node src/backend/utils/backupCli.js cleanup"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.2.1",
     "archiver": "^7.0.1",
     "axios": "^1.6.0",
     "better-sqlite3": "^12.8.0",
@@ -44,12 +45,10 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.21",
     "concurrently": "^8.2.2",
-    "postcss": "^8.5.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "tailwindcss": "^3.4.0",
+    "tailwindcss": "^4.2.1",
     "vite": "^5.1.4"
   }
 }

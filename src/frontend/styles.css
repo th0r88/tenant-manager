@@ -1,6 +1,7 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: light --default, business --prefersdark;
+}
 
 /* Prevent horizontal page shifting by always showing scrollbar */
 html {
@@ -26,32 +27,6 @@ html {
 .table-fixed {
   table-layout: fixed;
   width: 100%;
-}
-
-/* Fix DaisyUI 5 light theme: increase border visibility for form elements */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme]) .select,
-  :root:not([data-theme]) .input,
-  :root:not([data-theme]) .checkbox {
-    --input-color: color-mix(in oklab, var(--color-base-content) 40%, #0000);
-  }
-  :root:not([data-theme]) .btn {
-    --btn-border: color-mix(in oklab, var(--btn-bg), #000 15%);
-  }
-  :root:not([data-theme]) .btn-outline {
-    border-color: color-mix(in oklab, var(--color-base-content) 30%, #0000);
-  }
-}
-[data-theme="light"] .select,
-[data-theme="light"] .input,
-[data-theme="light"] .checkbox {
-  --input-color: color-mix(in oklab, var(--color-base-content) 40%, #0000);
-}
-[data-theme="light"] .btn {
-  --btn-border: color-mix(in oklab, var(--btn-bg), #000 15%);
-}
-[data-theme="light"] .btn-outline {
-  border-color: color-mix(in oklab, var(--color-base-content) 30%, #0000);
 }
 
 /* Form field consistency */
