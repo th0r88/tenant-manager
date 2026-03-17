@@ -703,7 +703,7 @@ function AppContent() {
             
             {activeTab === 'utilities' && (
                 <>
-                    <UtilityForm onSubmit={handleUtilitySubmit} initialData={editingUtility} onCancel={() => setEditingUtility(null)} selectedProperty={selectedProperty} properties={properties} />
+                    <UtilityForm onSubmit={handleUtilitySubmit} initialData={editingUtility} onCancel={() => setEditingUtility(null)} selectedProperty={selectedProperty} properties={properties} tenants={tenants} />
                     <div>
                         <h2 className="text-2xl font-bold mb-4">{t('utilities.title')}</h2>
                         
@@ -801,7 +801,13 @@ function AppContent() {
                                             <div className="space-y-2">
                                                 <p><span className="font-semibold">{t('utilities.period')}</span> {utility.month}/{utility.year}</p>
                                                 <p><span className="font-semibold">{t('utilities.totalAmountLabel')}</span> {formatCurrency(utility.total_amount)}</p>
-                                                <p><span className="font-semibold">{t('utilities.allocationLabel')}</span> {utility.allocation_method === 'per_person' ? t('utilities.perPerson') : utility.allocation_method === 'per_sqm' ? 'po m²' : utility.allocation_method}</p>
+                                                <p><span className="font-semibold">{t('utilities.allocationLabel')}</span> {utility.allocation_method === 'per_person' ? t('utilities.perPerson') : utility.allocation_method === 'per_sqm' ? t('utilities.perSquareMeter') : utility.allocation_method === 'direct' ? t('utilities.directAssignment') : utility.allocation_method}</p>
+                                                {utility.allocation_method === 'direct' && utility.assigned_tenant_id && (() => {
+                                                    const assignedTenant = tenants.find(tenant => tenant.id == utility.assigned_tenant_id);
+                                                    return assignedTenant ? (
+                                                        <p className="text-sm opacity-70">{assignedTenant.name} {assignedTenant.surname}</p>
+                                                    ) : null;
+                                                })()}
                                                 {utility.is_shared && utility.shared_property_ids && (
                                                     <p className="text-sm opacity-70">
                                                         {utility.shared_property_ids.map(pid => properties.find(p => p.id === pid)?.name).filter(Boolean).join(', ')}

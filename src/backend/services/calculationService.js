@@ -17,6 +17,24 @@ export const calculateAllocations = async (utilityEntryId) => {
         // Delete existing allocations for this utility entry
         await db.query('DELETE FROM tenant_utility_allocations WHERE utility_entry_id = $1', [utilityEntryId]);
 
+        // Direct assignment: 100% to assigned tenant, no need to query all tenants
+        if (utility.allocation_method === 'direct') {
+            if (!utility.assigned_tenant_id) {
+                throw new Error('No tenant assigned for direct allocation');
+            }
+            const allocation = {
+                tenant_id: utility.assigned_tenant_id,
+                utility_entry_id: utilityEntryId,
+                allocated_amount: parseFloat(utility.total_amount)
+            };
+            await db.query(
+                'INSERT INTO tenant_utility_allocations (tenant_id, utility_entry_id, allocated_amount) VALUES ($1, $2, $3)',
+                [allocation.tenant_id, allocation.utility_entry_id, allocation.allocated_amount]
+            );
+            console.log(`Direct-assigned ${utility.total_amount} ${utility.utility_type} to tenant ${utility.assigned_tenant_id}`);
+            return [allocation];
+        }
+
         // Check if this utility is shared across properties
         const sharedResult = await db.query(
             'SELECT property_id FROM utility_shared_properties WHERE utility_entry_id = $1',

@@ -20,6 +20,16 @@ ALTER TABLE utility_entries ADD COLUMN property_id INTEGER DEFAULT 1;
 UPDATE tenants SET property_id = 1 WHERE property_id IS NULL;
 UPDATE utility_entries SET property_id = 1 WHERE property_id IS NULL;
 
+-- Add assigned_tenant_id for direct electricity assignment
+ALTER TABLE utility_entries ADD COLUMN assigned_tenant_id INTEGER;
+
+-- Drop old unique constraint that prevents multiple electricity entries per property/month
+-- SQLite requires recreating the index; the old UNIQUE is part of table def but we override with a new partial index
+DROP INDEX IF EXISTS idx_unique_utility_entry;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_utility_entry
+    ON utility_entries (property_id, month, year, utility_type)
+    WHERE assigned_tenant_id IS NULL;
+
 -- Add utility_shared_properties junction table for cross-property utility sharing
 CREATE TABLE IF NOT EXISTS utility_shared_properties (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

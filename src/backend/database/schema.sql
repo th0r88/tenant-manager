@@ -34,11 +34,14 @@ CREATE TABLE IF NOT EXISTS utility_entries (
     year INTEGER NOT NULL,
     utility_type TEXT NOT NULL,
     total_amount REAL NOT NULL,
-    allocation_method TEXT NOT NULL CHECK (allocation_method IN ('per_person', 'per_sqm', 'per_person_weighted', 'per_sqm_weighted')),
+    allocation_method TEXT NOT NULL CHECK (allocation_method IN ('per_person', 'per_sqm', 'per_person_weighted', 'per_sqm_weighted', 'direct')),
+    assigned_tenant_id INTEGER REFERENCES tenants (id) ON DELETE SET NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (property_id) REFERENCES properties (id) ON DELETE CASCADE,
-    UNIQUE(property_id, month, year, utility_type)
+    FOREIGN KEY (property_id) REFERENCES properties (id) ON DELETE CASCADE
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_utility_entry
+    ON utility_entries (property_id, month, year, utility_type)
+    WHERE assigned_tenant_id IS NULL;
 
 CREATE TABLE IF NOT EXISTS tenant_utility_allocations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

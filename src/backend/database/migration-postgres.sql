@@ -32,6 +32,15 @@ BEGIN
     END IF;
 END $$;
 
+-- Add assigned_tenant_id for direct electricity assignment
+ALTER TABLE utility_entries ADD COLUMN IF NOT EXISTS assigned_tenant_id BIGINT;
+
+-- Replace unique constraint to allow multiple direct-assigned entries per property/month/type
+ALTER TABLE utility_entries DROP CONSTRAINT IF EXISTS unique_utility_entry;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_utility_entry
+    ON utility_entries (property_id, month, year, utility_type)
+    WHERE assigned_tenant_id IS NULL;
+
 -- Add utility_shared_properties junction table for cross-property utility sharing
 CREATE TABLE IF NOT EXISTS utility_shared_properties (
     id BIGSERIAL PRIMARY KEY,

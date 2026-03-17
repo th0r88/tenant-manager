@@ -55,7 +55,24 @@ router.get('/', async (req, res) => {
 
 router.post('/', validateUtility, async (req, res) => {
     try {
-        const { property_id = 1, month, year, utility_type, total_amount, allocation_method, shared_property_ids } = req.body;
+        const { property_id = 1, month, year, utility_type, total_amount, allocation_method, shared_property_ids, assigned_tenant_id } = req.body;
+
+        // Validate direct assignment
+        if (allocation_method === 'direct') {
+            if (utility_type !== 'electricity') {
+                return res.status(400).json({ error: 'Direct assignment is only available for electricity' });
+            }
+            if (!assigned_tenant_id) {
+                return res.status(400).json({ error: 'Tenant must be selected for direct assignment' });
+            }
+            const tenantCheck = await db.query('SELECT id, property_id FROM tenants WHERE id = $1', [assigned_tenant_id]);
+            if (tenantCheck.rows.length === 0) {
+                return res.status(400).json({ error: 'Assigned tenant not found' });
+            }
+            if (tenantCheck.rows[0].property_id !== Number(property_id)) {
+                return res.status(400).json({ error: 'Assigned tenant does not belong to this property' });
+            }
+        }
 
         // Validate shared property IDs before any writes
         let validatedSharedIds = null;
@@ -72,8 +89,8 @@ router.post('/', validateUtility, async (req, res) => {
         }
 
         const result = await db.query(
-            'INSERT INTO utility_entries (property_id, month, year, utility_type, total_amount, allocation_method) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-            [property_id, month, year, utility_type, total_amount, allocation_method]
+            'INSERT INTO utility_entries (property_id, month, year, utility_type, total_amount, allocation_method, assigned_tenant_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+            [property_id, month, year, utility_type, total_amount, allocation_method, assigned_tenant_id || null]
         );
 
         const newId = result.rows[0].id;
@@ -102,7 +119,26 @@ router.post('/', validateUtility, async (req, res) => {
 
 router.put('/:id', async (req, res) => {
     try {
-        const { month, year, utility_type, total_amount, allocation_method, shared_property_ids } = req.body;
+        const { month, year, utility_type, total_amount, allocation_method, shared_property_ids, assigned_tenant_id } = req.body;
+
+        // Validate direct assignment
+        if (allocation_method === 'direct') {
+            if (utility_type !== 'electricity') {
+                return res.status(400).json({ error: 'Direct assignment is only available for electricity' });
+            }
+            if (!assigned_tenant_id) {
+                return res.status(400).json({ error: 'Tenant must be selected for direct assignment' });
+            }
+            const utilityForProp = await db.query('SELECT property_id FROM utility_entries WHERE id = $1', [req.params.id]);
+            const propId = utilityForProp.rows[0]?.property_id;
+            const tenantCheck = await db.query('SELECT id, property_id FROM tenants WHERE id = $1', [assigned_tenant_id]);
+            if (tenantCheck.rows.length === 0) {
+                return res.status(400).json({ error: 'Assigned tenant not found' });
+            }
+            if (tenantCheck.rows[0].property_id !== Number(propId)) {
+                return res.status(400).json({ error: 'Assigned tenant does not belong to this property' });
+            }
+        }
 
         // Validate shared property IDs before any destructive operations
         let validatedSharedIds = null;
@@ -129,8 +165,8 @@ router.put('/:id', async (req, res) => {
         await db.query('DELETE FROM tenant_utility_allocations WHERE utility_entry_id = $1', [req.params.id]);
 
         await db.query(
-            'UPDATE utility_entries SET month=$1, year=$2, utility_type=$3, total_amount=$4, allocation_method=$5 WHERE id=$6',
-            [month, year, utility_type, total_amount, allocation_method, req.params.id]
+            'UPDATE utility_entries SET month=$1, year=$2, utility_type=$3, total_amount=$4, allocation_method=$5, assigned_tenant_id=$6 WHERE id=$7',
+            [month, year, utility_type, total_amount, allocation_method, assigned_tenant_id || null, req.params.id]
         );
 
         // Update shared property links

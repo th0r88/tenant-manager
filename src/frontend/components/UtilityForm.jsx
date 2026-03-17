@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
 
-export default function UtilityForm({ onSubmit, initialData = {}, onCancel, selectedProperty, onUtilityAdded, properties = [] }) {
+export default function UtilityForm({ onSubmit, initialData = {}, onCancel, selectedProperty, onUtilityAdded, properties = [], tenants = [] }) {
     const { t, getMonthNames, getUtilityTypes } = useTranslation();
     
     // Helper function to get previous month
@@ -71,6 +71,10 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
         if (isShared && sharedPropertyIds.length > 0) {
             submittedData.shared_property_ids = sharedPropertyIds;
         }
+
+        if (formData.allocation_method === 'direct' && formData.assigned_tenant_id) {
+            submittedData.assigned_tenant_id = parseInt(formData.assigned_tenant_id);
+        }
         
         onSubmit(submittedData);
         
@@ -94,7 +98,15 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
     };
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const updates = { [e.target.name]: e.target.value };
+        if (e.target.name === 'allocation_method' && e.target.value !== 'direct') {
+            updates.assigned_tenant_id = '';
+        }
+        if (e.target.name === 'utility_type' && e.target.value !== 'electricity') {
+            updates.allocation_method = formData.allocation_method === 'direct' ? 'per_person' : formData.allocation_method;
+            updates.assigned_tenant_id = '';
+        }
+        setFormData({ ...formData, ...updates });
     };
 
     return (
@@ -172,17 +184,41 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                             <label className="label">
                                 <span className="label-text">{t('utilities.allocationMethod')} *</span>
                             </label>
-                            <select 
-                                name="allocation_method" 
-                                value={formData.allocation_method} 
-                                onChange={handleChange} 
-                                className="select select-bordered w-full" 
+                            <select
+                                name="allocation_method"
+                                value={formData.allocation_method}
+                                onChange={handleChange}
+                                className="select select-bordered w-full"
                                 required
                             >
                                 <option value="per_person">{t('utilities.perPerson')}</option>
                                 <option value="per_sqm">{t('utilities.perSquareMeter')}</option>
+                                {formData.utility_type === 'electricity' && (
+                                    <option value="direct">{t('utilities.directAssignment')}</option>
+                                )}
                             </select>
                         </div>
+                        {formData.allocation_method === 'direct' && (
+                            <div className="form-control w-full">
+                                <label className="label">
+                                    <span className="label-text">{t('utilities.assignToTenant')} *</span>
+                                </label>
+                                <select
+                                    name="assigned_tenant_id"
+                                    value={formData.assigned_tenant_id || ''}
+                                    onChange={handleChange}
+                                    className="select select-bordered w-full"
+                                    required
+                                >
+                                    <option value="">{t('utilities.selectTenant')}</option>
+                                    {tenants.map(tenant => (
+                                        <option key={tenant.id} value={tenant.id}>
+                                            {tenant.name} {tenant.surname}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                     </div>
                     {properties.length > 1 && (
                         <div className="mt-4">
