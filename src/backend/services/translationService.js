@@ -67,6 +67,7 @@ export const translations = {
       totalAmount: 'Total Amount',
       yourShare: 'Your Share',
       utilityType: 'Utility Type',
+      total: 'Total',
       generated: 'Generated',
       propertyManagementSystem: 'Property Management System',
       confidentialDocument: 'Confidential Document',
