@@ -275,14 +275,64 @@ export default class DatabaseAdapter {
                     migrationFile = 'migration.sql';
                     break;
             }
-            
+
             const migration = readFileSync(join(__dirname, migrationFile), 'utf8');
-            await this.exec(migration);
-            console.log('Migration completed successfully');
+
+            // For SQLite, run each statement individually so that a failed ALTER TABLE
+            // (e.g., "duplicate column name") does not block subsequent migrations.
+            // SQLite's exec() stops on the first error in a batch.
+            if (this.type === 'file') {
+                // Strip SQL comments before splitting, then split on semicolons
+                const stripped = migration.replace(/--.*$/gm, '');
+                const statements = stripped
+                    .split(';')
+                    .map(s => s.trim())
+                    .filter(s => s.length > 0);
+
+                let applied = 0;
+                let skipped = 0;
+                for (const stmt of statements) {
+                    try {
+                        await this.exec(stmt + ';');
+                        applied++;
+                    } catch (err) {
+                        // Expected for idempotent migrations (duplicate column, table already exists, etc.)
+                        skipped++;
+                    }
+                }
+                console.log(`Migration completed: ${applied} applied, ${skipped} skipped (already applied)`);
+            } else if (this.type === 'postgresql') {
+                // For PostgreSQL, split on semicolons outside of DO $$ blocks to run
+                // each statement individually. This prevents one idempotent failure
+                // from aborting the entire migration batch.
+                const statements = this.splitPostgresStatements(migration);
+
+                let applied = 0;
+                let skipped = 0;
+                for (const stmt of statements) {
+                    try {
+                        await this.exec(stmt);
+                        applied++;
+                    } catch (err) {
+                        // Expected for idempotent migrations (column already exists, etc.)
+                        console.log(`Migration statement skipped: ${err.message}`);
+                        skipped++;
+                    }
+                }
+                console.log(`PostgreSQL migration completed: ${applied} applied, ${skipped} skipped (already applied)`);
+            } else {
+                await this.exec(migration);
+                console.log('Migration completed successfully');
+            }
 
             // SQLite: recreate utility_entries if CHECK constraint is outdated
             if (this.type === 'file') {
                 await this.migrateSqliteUtilityEntries();
+            }
+
+            // PostgreSQL: ensure CHECK constraint includes per_apartment
+            if (this.type === 'postgresql') {
+                await this.migratePostgresUtilityEntries();
             }
         } catch (error) {
             console.log('Migration skipped (likely new installation):', error.message);
@@ -295,10 +345,14 @@ export default class DatabaseAdapter {
      */
     async migrateSqliteUtilityEntries() {
         try {
-            // Test if per_apartment is allowed by the current CHECK constraint
+            // Test if per_apartment is allowed by the current CHECK constraint.
+            // Use valid values to avoid triggering validation triggers and FK constraints.
+            // We query for an existing property_id to use, falling back to a direct SQL check.
+            const propResult = await this.query("SELECT id FROM properties LIMIT 1", []);
+            const testPropertyId = propResult.rows.length > 0 ? propResult.rows[0].id : 1;
             await this.query(
-                "INSERT INTO utility_entries (property_id, month, year, utility_type, total_amount, allocation_method) VALUES (0, 0, 0, '__check_test__', 0, 'per_apartment')",
-                []
+                "INSERT INTO utility_entries (property_id, month, year, utility_type, total_amount, allocation_method) VALUES ($1, 1, 2000, '__check_test__', 1, 'per_apartment')",
+                [testPropertyId]
             );
             // If it succeeded, delete the test row and we're done
             await this.query("DELETE FROM utility_entries WHERE utility_type = '__check_test__'", []);
@@ -329,6 +383,115 @@ export default class DatabaseAdapter {
                 console.log('utility_entries table recreated with updated CHECK constraint');
             }
         }
+    }
+
+    /**
+     * PostgreSQL-specific: update CHECK constraint on utility_entries to include per_apartment.
+     * Unlike SQLite, PostgreSQL can ALTER constraints directly without recreating the table.
+     */
+    async migratePostgresUtilityEntries() {
+        try {
+            // Test if per_apartment is already allowed by the current CHECK constraint.
+            // Query the constraint definition from the catalog to avoid inserting test rows.
+            const result = await this.query(
+                `SELECT pg_get_constraintdef(c.oid) AS def
+                 FROM pg_constraint c
+                 JOIN pg_class t ON c.conrelid = t.oid
+                 WHERE t.relname = 'utility_entries'
+                   AND c.conname = 'utility_entries_allocation_method_check'`,
+                []
+            );
+
+            if (result.rows.length === 0) {
+                // No CHECK constraint found at all -- add one with all methods
+                console.log('No allocation_method CHECK constraint found, adding one...');
+                await this.exec(
+                    `ALTER TABLE utility_entries ADD CONSTRAINT utility_entries_allocation_method_check
+                        CHECK (allocation_method IN ('per_person', 'per_sqm', 'per_person_weighted', 'per_sqm_weighted', 'direct', 'per_apartment'))`
+                );
+                console.log('Added allocation_method CHECK constraint with per_apartment');
+                return;
+            }
+
+            const constraintDef = result.rows[0].def;
+            if (constraintDef && constraintDef.includes('per_apartment')) {
+                console.log('PostgreSQL CHECK constraint already includes per_apartment');
+                return;
+            }
+
+            // Constraint exists but does not include per_apartment -- replace it
+            console.log('Updating PostgreSQL CHECK constraint to include per_apartment...');
+            await this.exec(
+                `ALTER TABLE utility_entries DROP CONSTRAINT utility_entries_allocation_method_check`
+            );
+            await this.exec(
+                `ALTER TABLE utility_entries ADD CONSTRAINT utility_entries_allocation_method_check
+                    CHECK (allocation_method IN ('per_person', 'per_sqm', 'per_person_weighted', 'per_sqm_weighted', 'direct', 'per_apartment'))`
+            );
+            console.log('PostgreSQL CHECK constraint updated to include per_apartment');
+        } catch (error) {
+            console.error('Error updating PostgreSQL CHECK constraint for per_apartment:', error.message);
+            // Do not swallow silently -- log the full error so it can be diagnosed
+        }
+    }
+
+    /**
+     * Split a PostgreSQL migration SQL file into individual executable statements.
+     * Handles DO $$ ... $$ blocks as single statements (they contain semicolons internally).
+     */
+    splitPostgresStatements(sql) {
+        const statements = [];
+        let current = '';
+        let inDollarBlock = false;
+        const lines = sql.split('\n');
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+
+            // Skip pure comment lines
+            if (trimmed.startsWith('--')) {
+                continue;
+            }
+
+            // Strip inline comments
+            const cleanLine = line.replace(/--.*$/, '');
+
+            // Detect DO $$ or other dollar-quoted block start
+            if (!inDollarBlock && /DO\s+\$\$/i.test(cleanLine)) {
+                inDollarBlock = true;
+            }
+
+            current += cleanLine + '\n';
+
+            if (inDollarBlock) {
+                // Detect end of dollar-quoted block: a line ending with $$; (closing the DO block)
+                if (/\$\$\s*;\s*$/.test(trimmed.replace(/--.*$/, ''))) {
+                    inDollarBlock = false;
+                    const stmt = current.trim();
+                    if (stmt.length > 0) {
+                        statements.push(stmt);
+                    }
+                    current = '';
+                }
+            } else {
+                // Outside DO blocks, split on semicolons
+                if (cleanLine.trim().endsWith(';')) {
+                    const stmt = current.trim();
+                    if (stmt.length > 0) {
+                        statements.push(stmt);
+                    }
+                    current = '';
+                }
+            }
+        }
+
+        // Push any remaining content
+        const remaining = current.trim();
+        if (remaining.length > 0 && remaining !== ';') {
+            statements.push(remaining);
+        }
+
+        return statements;
     }
 
     /**

@@ -1,5 +1,12 @@
 -- Enhanced database constraints for data integrity
 
+-- Partial unique index for utility entries (allows multiple direct-assigned entries per type/month)
+-- This must run after migrations to ensure assigned_tenant_id column exists
+DROP INDEX IF EXISTS idx_unique_utility_entry;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_utility_entry
+    ON utility_entries (property_id, month, year, utility_type)
+    WHERE assigned_tenant_id IS NULL;
+
 -- Add additional constraints to existing tables
 
 -- Properties table constraints
