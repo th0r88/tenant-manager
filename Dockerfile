@@ -33,11 +33,9 @@ RUN addgroup -g 1001 -S tenant-manager && \
 # Copy package files
 COPY package*.json ./
 
-# Install build tools for native modules (better-sqlite3 needs compilation)
-RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
-    npm install --omit=dev --no-audit && \
-    npm cache clean --force && \
-    apk del .build-deps
+# Install production dependencies (skip better-sqlite3 native build - production uses PostgreSQL)
+RUN npm install --omit=dev --no-audit --ignore-scripts && \
+    npm cache clean --force
 
 # Copy application code (backend)
 COPY src/ ./src/
