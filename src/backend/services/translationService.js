@@ -92,7 +92,7 @@ export const translations = {
       water: 'Water',
       heating: 'Heating',
       tv_rtv: 'TV + RTV License',
-      cleaning: 'Cleaning',
+      cleaning: 'Waste/Trash',
       internet: 'Internet',
       maintenance: 'Maintenance',
       gas: 'Gas',
