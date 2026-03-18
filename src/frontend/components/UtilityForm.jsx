@@ -107,7 +107,7 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                 updates.allocation_method = 'per_person';
                 updates.assigned_tenant_id = '';
             }
-            if (e.target.value !== 'waste' && e.target.value !== 'cleaning' && formData.allocation_method === 'per_apartment') {
+            if (e.target.value !== 'waste' && e.target.value !== 'cleaning' && e.target.value !== 'tv_rtv' && formData.allocation_method === 'per_apartment') {
                 updates.allocation_method = 'per_person';
             }
         }
@@ -201,7 +201,7 @@ export default function UtilityForm({ onSubmit, initialData = {}, onCancel, sele
                                 {formData.utility_type === 'electricity' && (
                                     <option value="direct">{t('utilities.directAssignment')}</option>
                                 )}
-                                {(formData.utility_type === 'waste' || formData.utility_type === 'cleaning') && (
+                                {(formData.utility_type === 'waste' || formData.utility_type === 'cleaning' || formData.utility_type === 'tv_rtv') && (
                                     <option value="per_apartment">{t('utilities.perApartment')}</option>
                                 )}
                             </select>
