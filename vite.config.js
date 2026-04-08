@@ -5,6 +5,12 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   root: 'src/frontend',
+  test: {
+    projects: [
+      '../../src/backend/tests/vitest.config.js',
+      './tests/vitest.config.js',
+    ],
+  },
   server: {
     port: 3000,
     host: true,

@@ -39,6 +39,7 @@ Thumbs.db
 README.md
 *.md
 docs/
+plans/
 
 # Build artifacts
 dist

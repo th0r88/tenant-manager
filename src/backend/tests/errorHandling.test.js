@@ -265,8 +265,9 @@ describe('Integration Tests', () => {
     });
 
     it('should log errors with proper context', async () => {
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-        
+        // errorRecovery uses logger which calls console.warn for circuit breaker failures
+        const consoleSpy = vi.spyOn(console, 'warn');
+
         try {
             await errorRecovery.withCircuitBreaker('test', () => {
                 throw new Error('Test error for logging');
@@ -274,11 +275,9 @@ describe('Integration Tests', () => {
         } catch (error) {
             // Expected to throw
         }
-        
-        // Should have logged the error
+
+        // Should have logged the warning
         expect(consoleSpy).toHaveBeenCalled();
-        
-        consoleSpy.mockRestore();
     });
 
     it('should handle memory monitoring', () => {

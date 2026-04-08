@@ -26,16 +26,19 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
+    - name: Run tests
+      run: npx vitest run
+
     - name: Build frontend
       run: npm run build
-    
+
     - name: Check for build artifacts
       run: |
         if [ ! -d "dist" ]; then
           echo "Build failed - no dist directory found"
           exit 1
         fi
-    
+
     - name: Check build size
       run: |
         echo "Build size:"

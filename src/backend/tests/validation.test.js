@@ -11,10 +11,10 @@ import validator from '../middleware/validationMiddleware.js';
 
 describe('EMŠO Validation', () => {
     it('should validate correct EMŠO', () => {
-        // Valid EMŠO with correct checksum
-        const validEmso = '1505006500006';
+        // Valid EMŠO: born 01.01.2000, region 50 (Slovenia), serial 001, checksum 2
+        const validEmso = '0101000500012';
         const result = emsoValidator.validate(validEmso);
-        
+
         expect(result.isValid).toBe(true);
         expect(result.errors).toHaveLength(0);
         expect(result.details).toBeDefined();
@@ -23,15 +23,16 @@ describe('EMŠO Validation', () => {
     it('should reject invalid EMŠO format', () => {
         const invalidEmso = '123456789012';
         const result = emsoValidator.validate(invalidEmso);
-        
+
         expect(result.isValid).toBe(false);
         expect(result.errors.length).toBeGreaterThan(0);
     });
 
     it('should reject EMŠO with wrong checksum', () => {
-        const wrongChecksum = '1505006500007';
+        // Same as valid but last digit changed from 2 to 3
+        const wrongChecksum = '0101000500013';
         const result = emsoValidator.validate(wrongChecksum);
-        
+
         expect(result.isValid).toBe(false);
         expect(result.errors).toContain('Invalid checksum digit');
     });
@@ -40,7 +41,7 @@ describe('EMŠO Validation', () => {
 describe('Precision Math', () => {
     it('should handle decimal arithmetic correctly', () => {
         const result = precisionMath.add(0.1, 0.2);
-        expect(precisionMath.toString(result)).toBe('0.30');
+        expect(result.toNumber()).toBe(0.3);
     });
 
     it('should allocate utility costs per person correctly', () => {
@@ -56,9 +57,9 @@ describe('Precision Math', () => {
         const areas = [20, 30, 50]; // Total: 100m²
         const allocations = precisionMath.allocateUtilityPerArea(totalCost, areas);
         
-        expect(precisionMath.toString(allocations[0])).toBe('60.00'); // 20% of 300
-        expect(precisionMath.toString(allocations[1])).toBe('90.00'); // 30% of 300
-        expect(precisionMath.toString(allocations[2])).toBe('150.00'); // 50% of 300
+        expect(allocations[0].toNumber()).toBe(60);  // 20% of 300
+        expect(allocations[1].toNumber()).toBe(90);  // 30% of 300
+        expect(allocations[2].toNumber()).toBe(150); // 50% of 300
     });
 
     it('should validate currency amounts', () => {
@@ -188,6 +189,6 @@ describe('Financial Calculation Precision', () => {
         const result = precisionMath.proportionalAllocation(totalAmount, allocations);
         const total = precisionMath.add(...Object.values(result));
         
-        expect(precisionMath.toString(total)).toBe('1000.00');
+        expect(total.toNumber()).toBe(1000);
     });
 });

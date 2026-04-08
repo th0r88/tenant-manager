@@ -115,7 +115,10 @@
     "occupancyStatuses": {
       "active": "Active",
       "pending": "Pending",
-      "moved_out": "Moved Out"
+      "moved_out": "Moved Out",
+      "active_f": "Active",
+      "pending_f": "Pending",
+      "moved_out_f": "Moved Out"
     },
     "validation": {
       "moveOutAfterMoveIn": "Move-out date must be after move-in date",
