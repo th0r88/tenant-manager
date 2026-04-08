@@ -1,14 +1,14 @@
 # Tenant Management System - Production Dockerfile
 
-# Build stage for frontend only - no native modules needed
-FROM node:22.22-alpine AS builder
+# Build stage - use slim (glibc) image; rolldown's musl binding strips emoji Unicode
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies fresh (lock file is macOS-specific, need musl bindings for Alpine)
+# Install dependencies fresh (lock file is macOS-specific, need platform bindings)
 RUN rm -f package-lock.json && npm install
 
 # Copy application code
