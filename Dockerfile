@@ -8,8 +8,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (rolldown/Vite 8 requires native bindings for build)
-RUN npm ci
+# Install dependencies fresh (lock file is macOS-specific, need musl bindings for Alpine)
+RUN rm -f package-lock.json && npm install
 
 # Copy application code
 COPY . .
