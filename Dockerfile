@@ -8,8 +8,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies, skip native module compilation (only need JS for frontend build)
-RUN npm ci --ignore-scripts
+# Install dependencies (rolldown/Vite 8 requires native bindings for build)
+RUN npm ci
 
 # Copy application code
 COPY . .
