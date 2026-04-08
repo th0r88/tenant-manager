@@ -25,7 +25,7 @@ const detectionOptions = {
   lookupLocalStorage: 'tenant-manager-language',
   
   // Only detect languages we support
-  checkWhitelist: true
+  checkSupportedLngs: true
 };
 
 i18n

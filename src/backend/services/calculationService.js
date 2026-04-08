@@ -264,26 +264,6 @@ export const calculateAllocations = async (utilityEntryId) => {
     }
 };
 
-export const recalculateAllAllocations = async (utilityEntryId) => {
-    try {
-        // Get the utility entry details  
-        const utilityResult = await db.query('SELECT * FROM utility_entries WHERE id = $1', [utilityEntryId]);
-        const utility = utilityResult.rows[0];
-        
-        if (!utility) {
-            throw new Error('Utility entry not found');
-        }
-
-        // Recalculate using the standard method
-        return await calculateAllocations(utilityEntryId);
-
-    } catch (error) {
-        console.error('Error recalculating allocations:', error);
-        throw error;
-    }
-};
-
 export default {
-    calculateAllocations,
-    recalculateAllAllocations
+    calculateAllocations
 };

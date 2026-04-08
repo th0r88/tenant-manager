@@ -1,6 +1,5 @@
 import { useTranslation as useReactI18next } from 'react-i18next';
 import { useLanguage } from '../context/LanguageContext';
-import { validatedT } from '../utils/translationValidator';
 
 /**
  * Custom hook that combines react-i18next with our language context
@@ -98,21 +97,6 @@ export const useTranslation = (namespace) => {
     }
   };
 
-  // Helper function to get short month names
-  const getShortMonthNames = () => {
-    if (currentLanguage === 'sl') {
-      return [
-        'Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun',
-        'Jul', 'Avg', 'Sep', 'Okt', 'Nov', 'Dec'
-      ];
-    } else {
-      return [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ];
-    }
-  };
-
   return {
     t,
     i18n,
@@ -123,7 +107,6 @@ export const useTranslation = (namespace) => {
     formatDate,
     formatCurrency,
     formatNumber,
-    getMonthNames,
-    getShortMonthNames
+    getMonthNames
   };
 };

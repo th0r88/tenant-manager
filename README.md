@@ -86,3 +86,7 @@ src/
 - `npm run recalculate-allocations` - Fix utility calculations
 
 Built with help of Claude Code for property management in Slovenia.
+
+### Deploy to Github
+
+Do not use "claude code" in commit message and commit messages should be concise.

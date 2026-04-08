@@ -14,7 +14,6 @@ import config from './config/environment.js';
 import logger from './utils/logger.js';
 import errorRecovery from './utils/errorRecovery.js';
 import healthCheck from './utils/healthCheck.js';
-// import alerting from './utils/alerting.js';
 import tenantsRouter from './routes/tenants.js';
 import utilitiesRouter from './routes/utilities.js';
 import reportsRouter from './routes/reports.js';
@@ -132,7 +131,7 @@ const distPath = join(__dirname, '..', '..', 'dist');
 app.use(express.static(distPath));
 
 // Handle client-side routing - serve index.html for all non-API routes
-app.get('*', (req, res) => {
+app.get('*path', (req, res) => {
     // Skip API routes
     if (req.path.startsWith('/api/')) {
         return res.status(404).json({ error: 'API endpoint not found' });
@@ -140,35 +139,6 @@ app.get('*', (req, res) => {
     
     res.sendFile(join(distPath, 'index.html'));
 });
-
-// Alert management endpoints (disabled)
-// app.get('/api/alerts', async (req, res) => {
-//     try {
-//         const limit = parseInt(req.query.limit) || 50;
-//         const alerts = await alerting.getRecentAlerts(limit);
-//         res.apiList(alerts, alerts.length, 'Recent alerts retrieved successfully');
-//     } catch (error) {
-//         res.apiServerError('Failed to retrieve alerts', { error: error.message });
-//     }
-// });
-
-// app.get('/api/alerts/stats', async (req, res) => {
-//     try {
-//         const stats = alerting.getAlertStats();
-//         res.apiSuccess(stats, 'Alert statistics retrieved successfully');
-//     } catch (error) {
-//         res.apiServerError('Failed to retrieve alert statistics', { error: error.message });
-//     }
-// });
-
-// app.post('/api/alerts/test', async (req, res) => {
-//     try {
-//         await alerting.testAlert();
-//         res.apiSuccess(null, 'Test alert sent successfully');
-//     } catch (error) {
-//         res.apiServerError('Failed to send test alert', { error: error.message });
-//     }
-// });
 
 // Response error handler (before global error handler)
 app.use(errorResponseMiddleware());
@@ -215,11 +185,9 @@ async function startServer() {
             console.log('✅ Helmet security headers: enabled');
             console.log('✅ Error recovery systems online');
             console.log('✅ API response standardization active');
-            // console.log('✅ Alert system initialized');
             console.log('🔗 Useful endpoints:');
             console.log(`   Health: http://${serverConfig.host}:${PORT}/api/health`);
             console.log(`   Status: http://${serverConfig.host}:${PORT}/api/status`);
-            // console.log(`   Alerts: http://${serverConfig.host}:${PORT}/api/alerts`);
         });
 
         // Setup graceful shutdown

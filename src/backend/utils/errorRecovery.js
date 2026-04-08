@@ -5,7 +5,6 @@
 
 import logger from './logger.js';
 import backupService from '../services/backupService.js';
-// import alerting from './alerting.js';
 
 export class ErrorRecovery {
     constructor() {
@@ -127,17 +126,6 @@ export class ErrorRecovery {
                 failures: breaker.failures,
                 nextAttempt: new Date(breaker.nextAttempt).toISOString()
             });
-
-            // Send circuit breaker alert
-            // try {
-            //     alerting.circuitBreakerAlert(breaker.name, 'OPEN', {
-            //         failures: breaker.failures,
-            //         threshold: breaker.settings.failureThreshold,
-            //         nextAttempt: new Date(breaker.nextAttempt).toISOString()
-            //     });
-            // } catch (alertError) {
-            //     console.error('Failed to send circuit breaker alert:', alertError);
-            // }
         }
     }
 
@@ -353,13 +341,6 @@ export class ErrorRecovery {
                     heapTotal: `${Math.round(usage.heapTotal / 1024 / 1024)}MB`,
                     external: `${Math.round(usage.external / 1024 / 1024)}MB`
                 });
-
-                // Send memory alert
-                // try {
-                //     await alerting.memoryAlert(usage);
-                // } catch (alertError) {
-                //     console.error('Failed to send memory alert:', alertError);
-                // }
 
                 // Trigger garbage collection if available
                 if (global.gc) {

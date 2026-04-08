@@ -10,7 +10,6 @@ import { dirname, join } from 'path';
 import logger from './logger.js';
 import backupService from '../services/backupService.js';
 import db from '../database/db.js';
-import alerting from './alerting.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -95,20 +94,10 @@ export class HealthCheck {
                 stack: error.stack
             };
 
-            logger.logHealth(name, 'unhealthy', { 
+            logger.logHealth(name, 'unhealthy', {
                 error: error.message,
-                duration: result.duration 
+                duration: result.duration
             });
-
-            // Send alert for health check failure (temporarily disabled)
-            // try {
-            //     await alerting.healthCheckAlert(name, 'unhealthy', {
-            //         error: error.message,
-            //         duration: result.duration
-            //     });
-            // } catch (alertError) {
-            //     console.error('Failed to send health check alert:', alertError);
-            // }
         }
 
         this.lastResults.set(name, result);
@@ -483,18 +472,8 @@ export class HealthCheck {
                 
                 if (health.status === 'critical') {
                     logger.error('Critical system health detected', health);
-                    // try {
-                    //     await alerting.systemHealthAlert(health.status, health.summary);
-                    // } catch (alertError) {
-                    //     console.error('Failed to send system health alert:', alertError);
-                    // }
                 } else if (health.status === 'degraded') {
                     logger.warn('System health degraded', health);
-                    // try {
-                    //     await alerting.systemHealthAlert(health.status, health.summary);
-                    // } catch (alertError) {
-                    //     console.error('Failed to send system health alert:', alertError);
-                    // }
                 } else {
                     logger.debug('System health check completed', health);
                 }

@@ -148,7 +148,7 @@ function extractConstraintDetails(message) {
 }
 
 // Request validation middleware
-export function validateRequest(schema) {
+export function validateRequest() {
     return (req, res, next) => {
         try {
             // Basic input sanitization

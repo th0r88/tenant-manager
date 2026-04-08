@@ -26,7 +26,7 @@ export const generalLimiter = rateLimit({
 /**
  * Strict rate limiter for write operations - 20 requests per 15 minutes
  */
-export const strictLimiter = rateLimit({
+const strictLimiter = rateLimit({
     windowMs: rateLimitConfig.windowMs || 900000,
     max: 20,
     standardHeaders: true,
