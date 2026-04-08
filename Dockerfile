@@ -18,23 +18,23 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:22.22-alpine AS production
+FROM node:22-slim AS production
 
 # Patch base image vulnerabilities
-RUN apk upgrade --no-cache
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S tenant-manager && \
-    adduser -S tenant-manager -u 1001
+RUN groupadd -g 1001 tenant-manager && \
+    useradd -u 1001 -g tenant-manager -s /bin/false tenant-manager
 
 # Copy package files
 COPY package*.json ./
 
 # Install production dependencies (skip better-sqlite3 native build - production uses PostgreSQL)
-RUN npm install --omit=dev --no-audit --ignore-scripts && \
+RUN rm -f package-lock.json && npm install --omit=dev --no-audit --ignore-scripts && \
     npm cache clean --force
 
 # Copy application code (backend)
