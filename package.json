@@ -1,6 +1,6 @@
 {
   "name": "tenant-manager",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
@@ -28,7 +28,7 @@
     "backup:cleanup": "node src/backend/utils/backupCli.js cleanup"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.2.2",
+    "@tailwindcss/vite": "4.2.2",
     "archiver": "^7.0.1",
     "axios": "^1.14.0",
     "better-sqlite3": "^12.8.0",
@@ -54,7 +54,7 @@
     "jsdom": "^29.0.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "tailwindcss": "^4.2.2",
+    "tailwindcss": "4.2.2",
     "vite": "^8.0.7",
     "vitest": "^4.1.3"
   }
