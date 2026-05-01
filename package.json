@@ -21,6 +21,7 @@
     "backup:restore": "node src/backend/utils/backupCli.js restore",
     "recalculate-allocations": "node scripts/recalculate-utility-allocations.js",
     "verify-allocations": "node scripts/verify-allocations.js",
+    "reconcile-overpayments": "node scripts/reconcile-overpayments.js",
     "backup:list": "node src/backend/utils/backupCli.js list",
     "backup:verify": "node src/backend/utils/backupCli.js verify",
     "backup:info": "node src/backend/utils/backupCli.js info",

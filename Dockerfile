@@ -40,6 +40,9 @@ RUN rm -f package-lock.json && npm install --omit=dev --no-audit --ignore-script
 # Copy application code (backend)
 COPY src/ ./src/
 
+# Copy maintenance scripts (reconcile-overpayments, verify-allocations, etc.)
+COPY scripts/ ./scripts/
+
 # Copy built frontend from builder stage
 COPY --from=builder /app/dist ./dist
 

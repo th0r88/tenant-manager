@@ -2,7 +2,7 @@ import express from 'express';
 import db from '../database/db.js';
 import { generateTenantReport } from '../services/pdfService.js';
 import { calculateProportionalRent, calculateOccupiedDays } from '../services/proportionalCalculationService.js';
-import precisionMath from '../utils/precisionMath.js';
+import { computeAdjustment, computeEffectivePrevTotalDue } from '../services/adjustmentService.js';
 import archiver from 'archiver';
 import path from 'path';
 import { promisify } from 'util';
@@ -10,57 +10,18 @@ import { promisify } from 'util';
 // Helper function to sum utilities (proration is already handled in calculationService)
 function calculateProportionalUtilities(tenant, utilities, prevYear, prevMonth) {
     let utilities_total = 0;
-    
+
     if (utilities && utilities.length > 0) {
         // Simply sum up all utility allocations - they are already correctly calculated
         // with proper per-person/per-sqm logic and proration applied in calculationService
         utilities_total = utilities.reduce((sum, utility) => sum + (parseFloat(utility.allocated_amount) || 0), 0);
     }
-    
+
     return {
         utilities_total: Math.round(utilities_total * 100) / 100,
         utilities_prorated: false, // Proration was already applied during initial calculation
         utilities_original: utilities || []
     };
-}
-
-// Helper: compute adjustment for a tenant's previous month payment
-// Invoice for month M = rent(M) + utilities(M-1)
-// So invoice for prevMonth = rent(prevMonth) + utilities(prevPrevMonth)
-async function computeAdjustment(tenantId, tenant, prevMonth, prevYear) {
-    const adjResult = await db.query(
-        'SELECT amount_paid FROM payment_adjustments WHERE tenant_id = $1 AND month = $2 AND year = $3',
-        [tenantId, prevMonth, prevYear]
-    );
-    if (adjResult.rows.length === 0) return null;
-
-    // Compute rent for prevMonth
-    const prevRentCalc = calculateProportionalRent(tenant.rent_amount, tenant.move_in_date, tenant.move_out_date, prevYear, prevMonth);
-    const prevRent = prevRentCalc.isFullMonth ? prevRentCalc.monthlyRent : prevRentCalc.proRatedAmount;
-
-    // The invoice for prevMonth included utilities from prevPrevMonth
-    let prevPrevMonth = prevMonth - 1;
-    let prevPrevYear = prevYear;
-    if (prevPrevMonth === 0) {
-        prevPrevMonth = 12;
-        prevPrevYear = prevYear - 1;
-    }
-
-    const prevPrevUtilResult = await db.query(
-        `SELECT SUM(tua.allocated_amount) as total
-         FROM tenant_utility_allocations tua
-         JOIN utility_entries ue ON tua.utility_entry_id = ue.id
-         WHERE tua.tenant_id = $1 AND ue.month = $2 AND ue.year = $3`,
-        [tenantId, prevPrevMonth, prevPrevYear]
-    );
-    const prevPrevUtilities = parseFloat(prevPrevUtilResult.rows[0]?.total) || 0;
-
-    const prevTotalDue = precisionMath.toNumber(precisionMath.add(prevRent, prevPrevUtilities));
-    const amountPaid = parseFloat(adjResult.rows[0].amount_paid);
-    const adjustmentAmount = precisionMath.toNumber(precisionMath.subtract(amountPaid, prevTotalDue));
-
-    if (Math.abs(adjustmentAmount) < 0.005) return null;
-    return { amount: adjustmentAmount, month: prevMonth, year: prevYear };
 }
 
 const router = express.Router();
@@ -126,52 +87,27 @@ router.get('/summary/:month/:year', async (req, res) => {
             utilitiesMap[util.tenant_id] = util.utilities_total || 0;
         });
 
-        // Compute prev_total_due per tenant (what was invoiced in prevMonth)
-        // Invoice for prevMonth = rent(prevMonth) + utilities(prevPrevMonth)
-        let prevPrevMonth = prevMonth - 1;
-        let prevPrevYear = prevYear;
-        if (prevPrevMonth === 0) {
-            prevPrevMonth = 12;
-            prevPrevYear = prevYear - 1;
-        }
-
-        let prevPrevUtilities = [];
-        if (tenantIds.length > 0) {
-            const pp = tenantIds.map((_, index) => `$${index + 3}`).join(', ');
-            const ppResult = await db.query(
-                `SELECT tua.tenant_id, SUM(tua.allocated_amount) as utilities_total
-                 FROM tenant_utility_allocations tua
-                 INNER JOIN utility_entries ue ON tua.utility_entry_id = ue.id
-                 WHERE ue.month = $1 AND ue.year = $2 AND tua.tenant_id IN (${pp})
-                 GROUP BY tua.tenant_id`,
-                [prevPrevMonth, prevPrevYear, ...tenantIds]
+        const eligibleTenants = tenants.filter(tenant => {
+            const rentCalculation = calculateProportionalRent(
+                tenant.rent_amount,
+                tenant.move_in_date,
+                tenant.move_out_date,
+                parseInt(year),
+                parseInt(month)
             );
-            prevPrevUtilities = ppResult.rows;
-        }
-        const prevPrevUtilMap = {};
-        prevPrevUtilities.forEach(u => {
-            prevPrevUtilMap[u.tenant_id] = parseFloat(u.utilities_total) || 0;
+            if (rentCalculation.occupiedDays > 0) return true;
+            // Include moved-out tenants who were present in prevMonth (final invoice)
+            const prevMonthDays = calculateOccupiedDays(
+                tenant.move_in_date, tenant.move_out_date, prevYear, prevMonth
+            );
+            return prevMonthDays > 0 && (utilitiesMap[tenant.id] || 0) > 0;
         });
 
-        const result = tenants
-            .filter(tenant => {
-                // Include tenants who were living here during the current month
-                const rentCalculation = calculateProportionalRent(
-                    tenant.rent_amount,
-                    tenant.move_in_date,
-                    tenant.move_out_date,
-                    parseInt(year),
-                    parseInt(month)
-                );
-                if (rentCalculation.occupiedDays > 0) return true;
-                // Include moved-out tenants who were present in prevMonth (final invoice)
-                const prevMonthDays = calculateOccupiedDays(
-                    tenant.move_in_date, tenant.move_out_date, prevYear, prevMonth
-                );
-                return prevMonthDays > 0 && (utilitiesMap[tenant.id] || 0) > 0;
-            })
-            .map(tenant => {
-            // Calculate proportional rent for current month
+        // Compute the *effective* prev_total_due per tenant. The frontend
+        // derives the displayed adjustment as `amount_paid - prev_total_due`,
+        // so this value must already include carryover from earlier months —
+        // otherwise overpayments spanning multiple months get silently dropped.
+        const result = await Promise.all(eligibleTenants.map(async (tenant) => {
             const rentCalculation = calculateProportionalRent(
                 tenant.rent_amount,
                 tenant.move_in_date,
@@ -180,34 +116,27 @@ router.get('/summary/:month/:year', async (req, res) => {
                 parseInt(month)
             );
 
-            // Get utilities total from previous month (already prorated by calculationService)
             const utilities_total = utilitiesMap[tenant.id] || 0;
 
-            // Calculate final amounts — rent is 0 if tenant has no occupied days this month
             const currentMonthRent = rentCalculation.occupiedDays > 0
                 ? (rentCalculation.isFullMonth ? rentCalculation.monthlyRent : rentCalculation.proRatedAmount)
                 : 0;
-            
-            // Compute previous month's total_due for adjustment calculation
-            const prevRentCalc = calculateProportionalRent(
-                tenant.rent_amount, tenant.move_in_date, tenant.move_out_date,
-                prevYear, prevMonth
+
+            const effectivePrevTotalDue = await computeEffectivePrevTotalDue(
+                tenant.id, tenant, prevMonth, prevYear
             );
-            const prevMonthRent = prevRentCalc.isFullMonth ? prevRentCalc.monthlyRent : prevRentCalc.proRatedAmount;
-            const prevMonthUtilities = prevPrevUtilMap[tenant.id] || 0;
-            const prev_total_due = parseFloat(prevMonthRent) + prevMonthUtilities;
 
             return {
                 ...tenant,
                 rent_amount: currentMonthRent,
                 utilities_total: Math.round(utilities_total * 100) / 100,
                 total_due: parseFloat(currentMonthRent) + parseFloat(utilities_total),
-                prev_total_due: Math.round(prev_total_due * 100) / 100,
+                prev_total_due: Math.round(effectivePrevTotalDue * 100) / 100,
                 is_rent_prorated: !rentCalculation.isFullMonth,
                 occupied_days_current: rentCalculation.occupiedDays,
                 total_days_current: rentCalculation.totalDaysInMonth
             };
-        });
+        }));
 
         // Sort: active tenants first (by move_in_date asc), then moved-out tenants (by move_out_date desc)
         result.sort((a, b) => {
