@@ -84,7 +84,6 @@ Thumbs.db
 backups/
 
 # Local development
-scripts/
 deploy.sh
 
 # Database files (will be mounted as volumes)
